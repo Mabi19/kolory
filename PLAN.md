@@ -16,7 +16,13 @@
     - pokazać szybko zamianę z sRGB na Oklab
 
 ## Uwagi
+- Chciałbym ominąć CIE 1931 XYZ.
 - LMS w konwersji do Oklab to nie jest dokładnie standardowy LMS.
 
 ## Źródła
+- https://www.w3.org/TR/css-color-4/#hex-notation
+- https://www.w3.org/Graphics/Color/sRGB.html
 - https://bottosson.github.io/posts/oklab/
+
+## Inne interesujące rzeczy które warto sprawdzić czy coś
+- http://www.ericbrasseur.org/gamma.html?i=1
