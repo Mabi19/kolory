@@ -17,3 +17,6 @@
 
 ## Uwagi
 - LMS w konwersji do Oklab to nie jest dokładnie standardowy LMS.
+
+## Źródła
+- https://bottosson.github.io/posts/oklab/

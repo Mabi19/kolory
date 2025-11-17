@@ -26,6 +26,8 @@ body::before {
     position: fixed;
     inset: 0;
     background: linear-gradient(to bottom right, var(--accent-pink), var(--accent-purple));
+    --w: 16px;
+    --triangle-offset: 96px;
     clip-path: polygon(evenodd,
             /* outer rectangle */
             0px 0px,
@@ -33,15 +35,28 @@ body::before {
             100% 100%,
             0px 100%,
             /* move inward */
-            0px 16px,
-            16px 16px,
+            0px var(--w),
+            var(--w) var(--w),
             /* inner rectangle with corner */
-            16px calc(100% - 16px),
-            calc(100% - 16px) calc(100% - 16px),
-            calc(100% - 16px) 96px,
-            calc(100% - 96px) 16px,
-            0px 16px);
+            var(--w) calc(100% - var(--w)),
+            calc(100% - var(--w)) calc(100% - var(--w)),
+            calc(100% - var(--w)) var(--triangle-offset),
+            calc(100% - var(--triangle-offset)) var(--w),
+            0px var(--w));
     /* TODO: add a space triangle in that corner */
+}
+
+body::after {
+    content: "";
+    position: fixed;
+    top: 0;
+    right: 0;
+    --size: calc(96px - 16px / sqrt(2));
+    width: var(--size);
+    height: var(--size);
+    background-image: url("corner.jpg");
+    background-size: cover;
+    clip-path: polygon(0% 0%, 100% 0%, 100% 100%);
 }
 
 .slide {
@@ -51,7 +66,7 @@ body::before {
     scroll-snap-align: start;
     scroll-snap-stop: always;
     font-size: 48px;
-    padding: 32px;
+    padding: 32px 48px;
 
     h1 {
         margin: 0;
