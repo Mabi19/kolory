@@ -23,6 +23,7 @@
 - https://www.w3.org/TR/css-color-4/#hex-notation
 - https://www.w3.org/Graphics/Color/sRGB.html
 - https://bottosson.github.io/posts/oklab/
+- https://commons.wikimedia.org/wiki/File:Cone-fundamentals-with-srgb-spectrum.svg
 
 ## Inne interesujące rzeczy które warto sprawdzić czy coś
 - http://www.ericbrasseur.org/gamma.html?i=1

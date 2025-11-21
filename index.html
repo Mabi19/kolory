@@ -26,7 +26,8 @@
             Według standardu CSS,
         </p>
         <blockquote>
-            The CSS hex color notation allows an sRGB color to be specified by giving the components as hexadecimal numbers [...]
+            The CSS hex color notation allows an sRGB color to be specified by giving the components as hexadecimal
+            numbers [...]
         </blockquote>
         <p>
             Ale co znaczy "kolor sRGB"?
@@ -43,34 +44,155 @@
     <div class="slide">
         <h2>Dlaczego RGB?</h2>
         <p>
-            (trochę o tym jak działa ludzkie oko)
+            Ludzkie oko zawiera trzy rodzaje czopków (komórek wykrywających kolory).
         </p>
+        <ul>
+            <li>Czopki typu L najbardziej reagują na światło czerwone</li>
+            <li>Czopki typu M najbardziej reagują na światło zielone</li>
+            <li>Czopki typu S najbardziej reagują na światło niebieskie</li>
+        </ul>
+        <img src="./cone-fundamentals.svg" alt="Wykres reakcji typów czopków od częstotliwości światła">
+        <!--
+            sRGB definiuje kolor światła czerwonego, zielonego i niebieskiego,
+            i komponenty koloru mówią ile każdego światła użyć.
+            Ale sRGB definiuje coś jeszcze...
+        -->
     </div>
     <div class="slide">
         <h2>Korekcja gamma</h2>
-        <p>
-            (oko mierzy ilość światła nieliniowo. trzeba to zresearchować)
-        </p>
+        <ul>
+            <li>Każdy z komponentów R, G i B ma 256 możliwych wartości w typowym kodowaniu</li>
+            <li>Chcemy ich użyć jak najwydajniej</li>
+            <li>Oko lepiej rozróżnia jasność gdy jest ciemno</li>
+            <li>... więc chcemy użyć więcej wartości na ciemne kolory</li>
+        </ul>
+        <math display="block">
+            <mrow>
+                <mi>R</mi>
+                <mo>=</mo>
+                <mrow>
+                    <mo>{</mo>
+                    <mtable rowspacing="0.5ex" columnalign="left left" displaystyle="false">
+                        <mtr>
+                            <mtd>
+                                <mfrac>
+                                    <mi>R'</mi>
+                                    <mn>12.92</mn>
+                                </mfrac>
+                                <mo>,</mo>
+                            </mtd>
+                            <mtd>
+                                <mi>R'</mi>
+                                <mo>&leq;</mo>
+                                <mn>0.04045</mn>
+                            </mtd>
+                        </mtr>
+                        <mtr>
+                            <mtd>
+                                <msup>
+                                    <mrow>
+                                        <mo>(</mo>
+                                        <mfrac>
+                                            <mrow>
+                                                <mi>R'</mi>
+                                                <mo>+</mo>
+                                                <mn>0.055</mn>
+                                            </mrow>
+                                            <mn>1.055</mn>
+                                        </mfrac>
+                                        <mo>)</mo>
+                                    </mrow>
+                                    <mn>2.4</mn>
+                                </msup>
+                                <mo>,</mo>
+                            </mtd>
+                            <mtd>
+                                <mi>R'</mi>
+                                <mo>&gt;</mo>
+                                <mn>0.04045</mn>
+                            </mtd>
+                        </mtr>
+                    </mtable>
+                </mrow>
+            </mrow>
+        </math>
+        <!-- TODO: wykres funkcji eotf sRGB (zrób sage'em?) -->
     </div>
     <div class="slide">
         <h2>...to nie tylko zalety</h2>
         <p>
-            (nieliniowość psuje matematykę)
+            Jako, że ilość światła nie jest wprost proporcjonalna do wartości komponentu,
+            robienie matematyki na ilościach światła powoduje... średnie rezultaty.
         </p>
+        <div id="srgb-gradient" class="gradient-demo srgb-gradient">
+            sRGB
+        </div>
     </div>
     <div class="slide">
         <h2>Rozwiązanie: odwrócenie gammy na czas matematyki</h2>
+        <math display="block">
+            <mrow>
+                <mi>R'</mi>
+                <mo>=</mo>
+                <mrow>
+                    <mo>{</mo>
+                    <mtable rowspacing="0.5ex" columnalign="left left" displaystyle="false">
+                        <mtr>
+                            <mtd>
+                                <mn>12.92</mn>
+                                <mo></mo>
+                                <mi>R</mi>
+                                <mo>,</mo>
+                            </mtd>
+                            <mtd>
+                                <mi>R</mi>
+                                <mo>&leq;</mo>
+                                <mn>0.0031308</mn>
+                            </mtd>
+                        </mtr>
+                        <mtr>
+                            <mtd>
+                                <mn>1.055</mn>
+                                <msup>
+                                    <mi>R</mi>
+                                    <mfrac>
+                                        <mn>1</mn>
+                                        <mn>2.4</mn>
+                                    </mfrac>
+                                </msup>
+                                <mo>&minus;</mo>
+                                <mn>0.055</mn>
+                                <mo>,</mo>
+                            </mtd>
+                            <mtd>
+                                <mi>R</mi>
+                                <mo>&gt;</mo>
+                                <mn>0.0031308</mn>
+                            </mtd>
+                        </mtr>
+                    </mtable>
+                </mrow>
+            </mrow>
+        </math>
+        <div id="srgb-gradient" class="gradient-demo srgb-gradient">
+            sRGB
+        </div>
+        <div id="srgb-linear-gradient" class="gradient-demo srgb-linear-gradient">
+            Liniowe sRGB
+        </div>
+        <div id="oklab-gradient" class="gradient-demo oklab-gradient">
+            Oklab
+        </div>
         <p>
-            (...)
-        </p>
-        <p>
-            (ciągle nieidealne odwzorowanie jasności (?))
+            (ciągle nieidealne odwzorowanie jasności, gradient hue w HSL (?))
+            (to pozwoli również na wspomnienie o polarnych formach)
+            (also: w gradiencie liniowym sRGB jest niezbalansowana barwa)
         </p>
     </div>
     <div class="slide">
         <h2>Percepcyjne przestrzenie barw</h2>
         <p>
-            (oklab)
+            (oklab, gradient hue w Oklch)
         </p>
     </div>
 </body>
