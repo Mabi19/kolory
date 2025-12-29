@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="pl">
 
 <head>
     <meta charset="UTF-8">
@@ -10,6 +10,8 @@
     <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:ital,wght@0,100..700;1,100..700&display=swap"
         rel="stylesheet">
     <link rel="stylesheet" href="./style.css">
+    <script defer src="./slideshow.js"></script>
+    <script defer src="./hsv-color-picker.js"></script>
 </head>
 
 <body>
@@ -21,7 +23,7 @@
         <p>Mateusz Bartnik</p>
     </div>
     <div class="slide">
-        <h2>#9370d8 i jego implikacje</h2>
+        <h2>#9370d8</h2>
         <p>
             Według standardu CSS,
         </p>
@@ -41,7 +43,42 @@
             <li>Tą rolę zwykle przyjmuje przestrzeń sRGB</li>
         </ul>
     </div>
-    <div class="slide">
+    <div class="slide flexible">
+        <h2>HSV, czyli walcowa forma sRGB</h2>
+        <!-- większość color pickerów działa na HSV, więc warto to wprowadzić -->
+        <!--
+            jeśli widzieliście kiedykolwiek interfejs wybierania koloru,
+            to pewnie nie był trzema suwakami R, G i B.
+        -->
+        <p>
+            Bezpośrednio manipulowanie osiami R, G i B jest mało intuicyjne;
+            dużo łatwiej jest wybrać barwę oddzielnie od parametrów takich jak jasność.
+        </p>
+        <div class="gradient-demo hsl-hue-gradient" id="color-picker-hue"></div>
+        <input type="range" min="0" max="360" id="color-picker-hue-selector" class="reveal-fade" data-reveal="1">
+        <div class="flex-target reveal-fade" id="color-picker-lower" data-reveal="1">
+            <div id="color-picker-sv">
+                <div id="color-picker-reticle"></div>
+            </div>
+            <div id="color-picker-output">
+                <div id="color-picker-output-hue"></div>
+                <div id="color-picker-output-sat"></div>
+                <div id="color-picker-output-val"></div>
+                <hr>
+                <div id="color-picker-output-rgb">
+                    <div id="color-picker-output-r"></div>
+                    <div id="color-picker-output-r-bar" class="bar red"></div>
+                    <div id="color-picker-output-g"></div>
+                    <div id="color-picker-output-g-bar" class="bar green"></div>
+                    <div id="color-picker-output-b"></div>
+                    <div id="color-picker-output-b-bar" class="bar blue"></div>
+                </div>
+                <hr>
+                <div id="color-picker-output-swatch"></div>
+            </div>
+        </div>
+    </div>
+    <div class="slide flexible">
         <h2>Dlaczego RGB?</h2>
         <p>
             Ludzkie oko zawiera trzy rodzaje czopków (komórek wykrywających kolory).
@@ -51,7 +88,8 @@
             <li>Czopki typu M najbardziej reagują na światło zielone</li>
             <li>Czopki typu S najbardziej reagują na światło niebieskie</li>
         </ul>
-        <img src="./cone-fundamentals.svg" alt="Wykres reakcji typów czopków od częstotliwości światła">
+        <img src="./cone-fundamentals.svg" class="flex-target" style="align-self: center"
+            alt="Wykres reakcji typów czopków od częstotliwości światła">
         <!--
             sRGB definiuje kolor światła czerwonego, zielonego i niebieskiego,
             i komponenty koloru mówią ile każdego światła użyć.
@@ -127,6 +165,9 @@
         <div id="srgb-gradient" class="gradient-demo srgb-gradient">
             sRGB
         </div>
+        <p data-reveal="1" class="reveal-fade">
+            Cokolwiek się dzieje po środku, to zdecydowanie nie jest żółty!
+        </p>
     </div>
     <div class="slide">
         <h2>Rozwiązanie: odwrócenie gammy na czas matematyki</h2>

@@ -26,12 +26,15 @@ body {
     height: 100vh;
     overflow-y: scroll;
     scroll-snap-type: y mandatory;
+    /* I don't want to accidentally select stuff in the presentation. */
+    user-select: none;
 }
 
 body::before {
     content: "";
     position: fixed;
     inset: 0;
+    z-index: 999;
     background: linear-gradient(to bottom right, var(--accent-pink), var(--accent-purple));
     --w: 16px;
     --triangle-offset: 96px;
@@ -63,6 +66,7 @@ body::after {
     background-image: url("corner.jpg");
     background-size: cover;
     clip-path: polygon(0% 0%, 100% 0%, 100% 100%);
+    z-index: 1000;
 }
 
 blockquote {
@@ -76,6 +80,18 @@ blockquote {
 math {
     font-family: "Latin Modern Math";
 }
+
+.reveal-fade {
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity .5s ease-out;
+
+    &.revealed {
+        pointer-events: auto;
+        opacity: 1;
+    }
+}
+
 
 .slide {
     width: 100vw;
@@ -103,6 +119,27 @@ math {
 
     ul {
         margin: 1rem 0;
+    }
+}
+
+
+.slide.flexible {
+    display: flex;
+    flex-flow: column nowrap;
+    align-items: start;
+    gap: 1rem;
+
+    h1,
+    h2,
+    p,
+    ul {
+        margin-block: 0;
+    }
+
+    .flex-target {
+        flex-grow: 1;
+        flex-shrink: 1;
+        align-self: start;
     }
 }
 
@@ -135,6 +172,7 @@ math {
 .gradient-demo {
     width: 100%;
     height: 2em;
+    flex-shrink: 0;
     margin: 1rem 0;
     color: white;
     text-align: center;
@@ -151,4 +189,138 @@ math {
 
 .oklab-gradient {
     background: linear-gradient(in oklab to right, red, lime);
+}
+
+.hsl-hue-gradient {
+    background: linear-gradient(in hsl shorter hue to right,
+            hsl(0deg 100% 50%),
+            hsl(120deg 100% 50%),
+            hsl(240deg 100% 50%),
+            hsl(360deg 100% 50%));
+}
+
+#color-picker-hue {
+    width: calc(100% - 48px);
+    height: 1em;
+    align-self: center;
+}
+
+#color-picker-hue-selector {
+    width: 100%;
+    appearance: none;
+    background: var(--accent-purple);
+    height: 8px;
+    border-radius: 4px;
+
+    &::-webkit-slider-thumb,
+    &::-moz-range-thumb {
+        background-color: var(--accent-pink);
+        box-shadow: 0 0 0 2px white;
+        border: none;
+        border-radius: 0;
+        --width: 48px;
+        --height: calc(sqrt(3) * 0.5 * var(--width));
+
+        width: var(--width);
+        height: var(--height);
+        clip-path: polygon(50% 0%, 100% 100%, 0% 100%);
+        position: relative;
+
+        &::after {
+            display: block;
+            content: "";
+            position: absolute;
+            top: 100%;
+            left: 100%;
+        }
+    }
+}
+
+#color-picker-lower {
+    margin-top: .5em;
+    margin-left: .5em;
+    margin-right: .5em;
+    display: flex;
+    flex-flow: row nowrap;
+    width: 100%;
+    gap: .5em;
+}
+
+#color-picker-sv {
+    width: auto;
+    height: auto;
+    aspect-ratio: 1 / 1;
+    --hue: 0deg;
+    background:
+        linear-gradient(to bottom, transparent 0%, black 100%),
+        linear-gradient(to right, #ffffff 0%, hsl(var(--hue), 100%, 50%) 100%);
+
+    position: relative;
+    overflow: clip;
+}
+
+#color-picker-reticle {
+    width: .5em;
+    height: .5em;
+    border: 1px solid white;
+    outline: 2px solid black;
+    box-shadow: white 0px 0px 0px 3px;
+    border-radius: 50%;
+    position: absolute;
+    transform: translate(-50%, 50%);
+    pointer-events: none;
+}
+
+#color-picker-output-rgb {
+    display: grid;
+    grid-template-columns: 7ch auto;
+    gap: 0 .5em;
+
+    .bar {
+        border-radius: 4px;
+        border: 2px solid white;
+        width: 5em;
+        height: 1em;
+        align-self: center;
+
+        position: relative;
+
+        &.red {
+            --col: #ff0000;
+        }
+
+        &.green {
+            --col: #00ff00;
+        }
+
+        &.blue {
+            --col: #4444ff;
+        }
+
+        &::after {
+            display: block;
+            content: "";
+            position: absolute;
+            top: 0%;
+            left: 0%;
+            height: 100%;
+            width: var(--fill);
+            background-color: var(--col);
+        }
+    }
+}
+
+#color-picker-output-swatch {
+    width: 100%;
+    height: 2em;
+    border: 2px solid white;
+    border-radius: 4px;
+}
+
+.oklch-hue-gradient {
+    background: linear-gradient(in oklch shorter hue to right,
+            oklch(75% 100% 0deg),
+            oklch(75% 100% 120deg),
+            oklch(75% 100% 240deg),
+            oklch(75% 100% 360deg));
 }
