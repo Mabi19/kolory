@@ -61,10 +61,11 @@
                 <div id="color-picker-reticle"></div>
             </div>
             <div id="color-picker-output">
-                <div id="color-picker-output-hue"></div>
-                <div id="color-picker-output-sat"></div>
-                <div id="color-picker-output-val"></div>
-                <hr>
+                <div id="color-picker-output-hsv">
+                    <div id="color-picker-output-hue"></div>
+                    <div id="color-picker-output-sat"></div>
+                    <div id="color-picker-output-val"></div>
+                </div>
                 <div id="color-picker-output-rgb">
                     <div id="color-picker-output-r"></div>
                     <div id="color-picker-output-r-bar" class="bar red"></div>
@@ -73,7 +74,6 @@
                     <div id="color-picker-output-b"></div>
                     <div id="color-picker-output-b-bar" class="bar blue"></div>
                 </div>
-                <hr>
                 <div id="color-picker-output-swatch"></div>
             </div>
         </div>
@@ -96,7 +96,7 @@
             Ale sRGB definiuje coś jeszcze...
         -->
     </div>
-    <div class="slide">
+    <div class="slide flexible">
         <h2>Korekcja gamma</h2>
         <ul>
             <li>Każdy z komponentów R, G i B ma 256 możliwych wartości w typowym kodowaniu</li>
@@ -104,57 +104,63 @@
             <li>Oko lepiej rozróżnia jasność gdy jest ciemno</li>
             <li>... więc chcemy użyć więcej wartości na ciemne kolory</li>
         </ul>
-        <math display="block">
-            <mrow>
-                <mi>R</mi>
-                <mo>=</mo>
+        <!--
+            R' to wartość elektryczna (wartość której używamy liczbowo), a R to wartość optyczna (ilość światła)
+            Część liniowa jest po to, aby przy ciemnych kolorach wyświetlacze mogły rozróżnić wartości po zaokrągleniu.
+        -->
+        <div id="gamma-side-by-side" class="flex-target">
+            <math display="block">
                 <mrow>
-                    <mo>{</mo>
-                    <mtable rowspacing="0.5ex" columnalign="left left" displaystyle="false">
-                        <mtr>
-                            <mtd>
-                                <mfrac>
+                    <mi>R</mi>
+                    <mo>=</mo>
+                    <mrow>
+                        <mo>{</mo>
+                        <mtable rowspacing="0.5ex" columnalign="left left" displaystyle="false">
+                            <mtr>
+                                <mtd>
+                                    <mfrac>
+                                        <mi>R'</mi>
+                                        <mn>12.92</mn>
+                                    </mfrac>
+                                    <mo>,</mo>
+                                </mtd>
+                                <mtd>
                                     <mi>R'</mi>
-                                    <mn>12.92</mn>
-                                </mfrac>
-                                <mo>,</mo>
-                            </mtd>
-                            <mtd>
-                                <mi>R'</mi>
-                                <mo>&leq;</mo>
-                                <mn>0.04045</mn>
-                            </mtd>
-                        </mtr>
-                        <mtr>
-                            <mtd>
-                                <msup>
-                                    <mrow>
-                                        <mo>(</mo>
-                                        <mfrac>
-                                            <mrow>
-                                                <mi>R'</mi>
-                                                <mo>+</mo>
-                                                <mn>0.055</mn>
-                                            </mrow>
-                                            <mn>1.055</mn>
-                                        </mfrac>
-                                        <mo>)</mo>
-                                    </mrow>
-                                    <mn>2.4</mn>
-                                </msup>
-                                <mo>,</mo>
-                            </mtd>
-                            <mtd>
-                                <mi>R'</mi>
-                                <mo>&gt;</mo>
-                                <mn>0.04045</mn>
-                            </mtd>
-                        </mtr>
-                    </mtable>
+                                    <mo>&leq;</mo>
+                                    <mn>0.04045</mn>
+                                </mtd>
+                            </mtr>
+                            <mtr>
+                                <mtd>
+                                    <msup>
+                                        <mrow>
+                                            <mo>(</mo>
+                                            <mfrac>
+                                                <mrow>
+                                                    <mi>R'</mi>
+                                                    <mo>+</mo>
+                                                    <mn>0.055</mn>
+                                                </mrow>
+                                                <mn>1.055</mn>
+                                            </mfrac>
+                                            <mo>)</mo>
+                                        </mrow>
+                                        <mn>2.4</mn>
+                                    </msup>
+                                    <mo>,</mo>
+                                </mtd>
+                                <mtd>
+                                    <mi>R'</mi>
+                                    <mo>&gt;</mo>
+                                    <mn>0.04045</mn>
+                                </mtd>
+                            </mtr>
+                        </mtable>
+                    </mrow>
                 </mrow>
-            </mrow>
-        </math>
-        <!-- TODO: wykres funkcji eotf sRGB (zrób sage'em?) -->
+            </math>
+            <img src="./graph-gamma.png" alt="Wykres funkcji EOTF sRGB" class="reveal-fade" data-reveal="1">
+        </div>
     </div>
     <div class="slide">
         <h2>...to nie tylko zalety</h2>
@@ -221,20 +227,74 @@
         <div id="srgb-linear-gradient" class="gradient-demo srgb-linear-gradient">
             Liniowe sRGB
         </div>
-        <div id="oklab-gradient" class="gradient-demo oklab-gradient">
-            Oklab
+        <div class="gradient-demo hsl-hue-gradient reveal-fade" data-reveal="1">
         </div>
-        <p>
-            (ciągle nieidealne odwzorowanie jasności, gradient hue w HSL (?))
-            (to pozwoli również na wspomnienie o polarnych formach)
-            (also: w gradiencie liniowym sRGB jest niezbalansowana barwa)
-        </p>
     </div>
     <div class="slide">
         <h2>Percepcyjne przestrzenie barw</h2>
         <p>
-            (oklab, gradient hue w Oklch)
+            sRGB jest oparte na sposobie działania oka. Ale to nie oko interpretuje kolory, a mózg.
+            Dlatego potrzebny jest model który jest bardziej zbliżony do interpretacji kolorów przez mózg.
         </p>
+        <p class="reveal-fade" data-reveal="1">
+            Taką przestrzenią kolorów jest Oklab.
+        </p>
+        <div id="oklab-gradient" class="gradient-demo oklab-gradient reveal-fade" data-reveal="1">
+            Oklab
+        </div>
+        <div class="gradient-demo srgb-linear-gradient reveal-fade" data-reveal="2">
+            Liniowe sRGB
+        </div>
+    </div>
+    <div class="slide">
+        <h2>Parametry przestrzeni Oklab</h2>
+        <p>Parametr L to jasność.</p>
+        <div class="gradient-label">
+            <span>oklab(0 0.3 0.3)</span>
+            <span>oklab(0.5 0.3 0.3)</span>
+        </div>
+        <div class="gradient-demo oklab-l-gradient"></div>
+        <div class="reveal-fade" data-reveal="1">
+            <p>Parametr a to pozycja na osi zielony-czerwony.</p>
+                <div class="gradient-label">
+                <span>oklab(0.6 -0.15 0)</span>
+                <span>oklab(0.6 0.2 0)</span>
+            </div>
+            <div class="gradient-demo oklab-a-gradient"></div>
+        </div>
+        <div class="reveal-fade" data-reveal="2">
+            <p>Parametr b to pozycja na osi niebieski-żółty.</p>
+                <div class="gradient-label">
+                <span>oklab(0.75 0 -0.15)</span>
+                <span>oklab(0.75 0 0.15)</span>
+            </div>
+            <div class="gradient-demo oklab-b-gradient"></div>
+        </div>
+        <!-- ciekawe zauważenie: deuteranopia widzi głównie kolory z gradientu b, a tritanopia z gradientu a -->
+    </div>
+    <div class="slide">
+        <h2>Oklch</h2>
+        <p>dokładniejsze porównanie z HSV, gradient</p>
+    </div>
+    <div class="slide">
+        <h2>Konwersja sRGB &rarr; Oklab</h2>
+    </div>
+    <div class="slide">
+        <h2>Słabe strony Oklab</h2>
+        <p>kształt gamy sRGB jest bardzo nieregularny w Oklab i Oklch</p>
+    </div>
+    <div class="slide">
+        <h2>Dziękuję za uwagę!</h2>
+        <p>Źródła:</p>
+        <ul>
+            <li><a href="https://www.w3.org/TR/css-color-4/#hex-notation">https://www.w3.org/TR/css-color-4/#hex-notation</a></li>
+            <li><a href="https://www.w3.org/Graphics/Color/sRGB.html">https://www.w3.org/Graphics/Color/sRGB.html</a></li>
+            <li><a href="https://bottosson.github.io/posts/oklab/">https://bottosson.github.io/posts/oklab/</a></li>
+            <li>
+                <a href="https://commons.wikimedia.org/wiki/File:Cone-fundamentals-with-srgb-spectrum.svg">https://commons.wikimedia.org/wiki/File:Cone-fundamentals-with-srgb-spectrum.svg</a>
+                (wykres reakcji czopków)
+            </li>
+        </ul>
     </div>
 </body>
 

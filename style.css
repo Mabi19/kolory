@@ -14,7 +14,8 @@
 :root {
     --accent-pink: #e174c5;
     --accent-purple: #8643b5;
-    overflow: hidden;
+    overflow-y: scroll;
+    scroll-snap-type: y mandatory;
 }
 
 body {
@@ -24,8 +25,6 @@ body {
     font-family: "IBM Plex Sans";
     margin: 0;
     height: 100vh;
-    overflow-y: scroll;
-    scroll-snap-type: y mandatory;
     /* I don't want to accidentally select stuff in the presentation. */
     user-select: none;
 }
@@ -81,26 +80,37 @@ math {
     font-family: "Latin Modern Math";
 }
 
-.reveal-fade {
-    opacity: 0;
-    pointer-events: none;
-    transition: opacity .5s ease-out;
-
-    &.revealed {
-        pointer-events: auto;
-        opacity: 1;
-    }
+a, a:visited {
+    color: lightskyblue;
 }
 
+a:active {
+    color: dodgerblue;
+}
+
+@media not print {
+    .reveal-fade {
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity .5s ease-out;
+
+        &.revealed {
+            pointer-events: auto;
+            opacity: 1;
+        }
+    }
+}
 
 .slide {
     width: 100vw;
     height: 100vh;
     overflow: hidden;
-    scroll-snap-align: start;
-    scroll-snap-stop: always;
     font-size: 48px;
     padding: 32px 48px;
+    @media not print {
+        scroll-snap-align: start;
+        scroll-snap-stop: always;
+    }
 
     h1 {
         margin: 0;
@@ -199,6 +209,32 @@ math {
             hsl(360deg 100% 50%));
 }
 
+.oklab-l-gradient {
+    background: linear-gradient(in oklab to right, oklab(0 0.3 0.3), oklab(0.5 0.3 0.3));
+}
+
+.oklab-a-gradient {
+    background: linear-gradient(in oklab to right, oklab(0.6 -0.15 0), oklab(0.6 0.2 0))
+}
+
+.oklab-b-gradient {
+    background: linear-gradient(in oklab to right, oklab(0.75 0 -0.15), oklab(0.75 0 0.15))
+}
+
+.gradient-label {
+    display: flex;
+    flex-flow: row nowrap;
+    justify-content: space-between;
+}
+
+#gamma-side-by-side {
+    min-height: 3em;
+    width: 100%;
+    display: flex;
+    flex-flow: row nowrap;
+    justify-content: space-between;
+}
+
 #color-picker-hue {
     width: calc(100% - 48px);
     height: 1em;
@@ -242,7 +278,8 @@ math {
     margin-right: .5em;
     display: flex;
     flex-flow: row nowrap;
-    width: 100%;
+    width: calc(100% - 1em);
+    min-height: 3em;
     gap: .5em;
 }
 
@@ -269,6 +306,16 @@ math {
     position: absolute;
     transform: translate(-50%, 50%);
     pointer-events: none;
+}
+
+#color-picker-output {
+    display: flex;
+    flex-flow: column wrap;
+    gap: 1em;
+}
+
+#color-picker-output-hsv {
+    min-width: 7ch;
 }
 
 #color-picker-output-rgb {
@@ -315,12 +362,4 @@ math {
     height: 2em;
     border: 2px solid white;
     border-radius: 4px;
-}
-
-.oklch-hue-gradient {
-    background: linear-gradient(in oklch shorter hue to right,
-            oklch(75% 100% 0deg),
-            oklch(75% 100% 120deg),
-            oklch(75% 100% 240deg),
-            oklch(75% 100% 360deg));
 }
