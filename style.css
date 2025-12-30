@@ -280,7 +280,21 @@ a:active {
     height: 8px;
     border-radius: 4px;
 
-    &::-webkit-slider-thumb,
+    &::-webkit-slider-thumb {
+        appearance: none;
+        background-color: var(--accent-pink);
+        box-shadow: 0 0 0 2px white;
+        border: none;
+        border-radius: 0;
+        --width: 48px;
+        --height: calc(sqrt(3) * 0.5 * var(--width));
+
+        width: var(--width);
+        height: var(--height);
+        clip-path: polygon(50% 0%, 100% 100%, 0% 100%);
+        position: relative;
+    }
+
     &::-moz-range-thumb {
         background-color: var(--accent-pink);
         box-shadow: 0 0 0 2px white;
@@ -293,14 +307,6 @@ a:active {
         height: var(--height);
         clip-path: polygon(50% 0%, 100% 100%, 0% 100%);
         position: relative;
-
-        &::after {
-            display: block;
-            content: "";
-            position: absolute;
-            top: 100%;
-            left: 100%;
-        }
     }
 }
 
