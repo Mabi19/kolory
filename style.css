@@ -16,6 +16,7 @@
     --accent-purple: #8643b5;
     overflow-y: scroll;
     scroll-snap-type: y mandatory;
+    scrollbar-width: none;
 }
 
 body {
@@ -130,6 +131,15 @@ a:active {
     ul {
         margin: 1rem 0;
     }
+
+    ol {
+        margin: 1rem 0;
+        padding-left: 2ch;
+    }
+
+    ol > li:has(math) {
+        margin: .5rem 0;
+    }
 }
 
 
@@ -142,7 +152,8 @@ a:active {
     h1,
     h2,
     p,
-    ul {
+    ul,
+    ol {
         margin-block: 0;
     }
 
@@ -219,6 +230,27 @@ a:active {
 
 .oklab-b-gradient {
     background: linear-gradient(in oklab to right, oklab(0.75 0 -0.15), oklab(0.75 0 0.15))
+}
+
+.oklch-hue-gradient {
+    --l: 0.75;
+    --c: 0.125;
+    background: linear-gradient(in oklch shorter hue to right,
+            oklch(var(--l) var(--c) 0deg),
+            oklch(var(--l) var(--c) 120deg),
+            oklch(var(--l) var(--c) 240deg),
+            oklch(var(--l) var(--c) 360deg));
+}
+
+.oklch-similar-hsl-gradient {
+    --offset: 30deg;
+    --s: 60%;
+    --l: 65%;
+    background: linear-gradient(in hsl shorter hue to right,
+            hsl(calc(0deg - var(--offset)) var(--s) var(--l)),
+            hsl(calc(120deg - var(--offset)) var(--s) var(--l)),
+            hsl(calc(240deg - var(--offset)) var(--s) var(--l)),
+            hsl(calc(360deg - var(--offset)) var(--s) var(--l)));
 }
 
 .gradient-label {

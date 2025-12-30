@@ -274,14 +274,181 @@
     </div>
     <div class="slide">
         <h2>Oklch</h2>
-        <p>dokładniejsze porównanie z HSV, gradient</p>
+        <p>
+            Podobnie jak z HSV, możemy zamienić Oklab na walec. Z powodu użycia koordynatów Lab jest to łatwiejsze niż z sRGB.
+        </p>
+        <math display="block" data-reveal="1" class="reveal-fade">
+            <mtable>
+                <mtr>
+                    <mtd>
+                        <mrow>
+                            <mi>h</mi>
+                            <mo>=</mo>
+                            <mi>atan2</mi>
+                            <mo>(</mo>
+                            <mi>b</mi>
+                            <mo>,</mo>
+                            <mi>a</mi>
+                            <mo>)</mo>
+                        </mrow>
+                    </mtd>
+                </mtr>
+                <mtr>
+                    <mtd>
+                        <mrow>
+                            <mi>C</mi>
+                            <mo>=</mo>
+                            <msqrt>
+                                <msup><mi>a</mi><mn>2</mn></msup>
+                                <mo>+</mo>
+                                <msup><mi>b</mi><mn>2</mn></msup>
+                            </msqrt>
+                        </mrow>
+                    </mtd>
+                </mtr>
+            </mtable>
+        </math>
+        <div data-reveal="2" class="reveal-fade gradient-demo oklch-hue-gradient">
+            Oklch
+        </div>
+        <div data-reveal="2" class="reveal-fade gradient-demo oklch-similar-hsl-gradient">
+            HSV
+        </div>
     </div>
     <div class="slide">
         <h2>Konwersja sRGB &rarr; Oklab</h2>
+        <ol>
+            <li data-reveal="1" class="reveal-fade">Odwróć gammę</li>
+            <li data-reveal="2" class="reveal-fade">
+                <math>
+                    <mrow>
+                        <mo>[</mo>
+                        <mtable rowspacing="0.5ex">
+                            <mtr><mtd><mi>l</mi></mtd></mtr>
+                            <mtr><mtd><mi>m</mi></mtd></mtr>
+                            <mtr><mtd><mi>s</mi></mtd></mtr>
+                        </mtable>
+                        <mo>]</mo>
+                        <mo>=</mo>
+                        <mo>[</mo>
+                        <mtable rowspacing="0.5ex">
+                            <mtr>
+                                <mtd><mn>0.4122214708</mn></mtd>
+                                <mtd><mn>0.5363325363</mn></mtd>
+                                <mtd><mn>0.0514459929</mn></mtd>
+                            </mtr>
+                            <mtr>
+                                <mtd><mn>0.2119034982</mn></mtd>
+                                <mtd><mn>0.6806995451</mn></mtd>
+                                <mtd><mn>0.1073969566</mn></mtd>
+                            </mtr>
+                            <mtr>
+                                <mtd><mn>0.0883024619</mn></mtd>
+                                <mtd><mn>0.2817188376</mn></mtd>
+                                <mtd><mn>0.6299787005</mn></mtd>
+                            </mtr>
+                        </mtable>
+                        <mo>]</mo>
+                        <mo>[</mo>
+                        <mtable rowspacing="0.5ex">
+                            <mtr><mtd><mi>R'</mi></mtd></mtr>
+                            <mtr><mtd><mi>G'</mi></mtd></mtr>
+                            <mtr><mtd><mi>B'</mi></mtd></mtr>
+                        </mtable>
+                        <mo>]</mo>
+                    </mrow>
+                </math>
+            </li>
+            <li data-reveal="3" class="reveal-fade">
+                <math>
+                    <mi>𝑙'</mi>
+                    <mo>=</mo>
+                    <msup><mi>l</mi><mfrac><mn>1</mn><mn>3</mn></mfrac></msup>
+                </math>,
+                <math>
+                    <mi>𝑚'</mi>
+                    <mo>=</mo>
+                    <msup><mi>m</mi><mfrac><mn>1</mn><mn>3</mn></mfrac></msup>
+                </math>,
+                <math>
+                    <mi>𝑠'</mi>
+                    <mo>=</mo>
+                    <msup><mi>s</mi><mfrac><mn>1</mn><mn>3</mn></mfrac></msup>
+                </math>.
+            </li>
+            <li data-reveal="4" class="reveal-fade">
+                <math>
+                    <mrow>
+                        <mo>[</mo>
+                        <mtable rowspacing="0.5ex">
+                            <mtr><mtd><mi>L</mi></mtd></mtr>
+                            <mtr><mtd><mi>a</mi></mtd></mtr>
+                            <mtr><mtd><mi>b</mi></mtd></mtr>
+                        </mtable>
+                        <mo>]</mo>
+                        <mo>=</mo>
+                        <mo>[</mo>
+                        <mtable rowspacing="0.5ex" columnalign="right">
+                            <mtr>
+                                <mtd><mn>0.2104542553</mn></mtd>
+                                <mtd><mn>0.7936177850</mn></mtd>
+                                <mtd><mo>&minus;</mo><mn>0.0040720468</mn></mtd>
+                            </mtr>
+                            <mtr>
+                                <mtd><mn>1.9779984951</mn></mtd>
+                                <mtd><mo>&minus;</mo><mn>2.4285922050</mn></mtd>
+                                <mtd><mn>0.4505937099</mn></mtd>
+                            </mtr>
+                            <mtr>
+                                <mtd><mn>0.0259040371</mn></mtd>
+                                <mtd><mn>0.7827717662</mn></mtd>
+                                <mtd><mo>&minus;</mo><mn>0.8086757660</mn></mtd>
+                            </mtr>
+                        </mtable>
+                        <mo>]</mo>
+                        <mo>[</mo>
+                        <mtable rowspacing="0.5ex">
+                            <mtr><mtd><mi>𝑙'</mi></mtd></mtr>
+                            <mtr><mtd><mi>𝑚'</mi></mtd></mtr>
+                            <mtr><mtd><mi>𝑠'</mi></mtd></mtr>
+                        </mtable>
+                        <mo>]</mo>
+                    </mrow>
+                </math>
+            </li>
+        </ol>
     </div>
     <div class="slide">
         <h2>Słabe strony Oklab</h2>
-        <p>kształt gamy sRGB jest bardzo nieregularny w Oklab i Oklch</p>
+        <ul>
+            <li data-reveal="1" class="reveal-fade">
+                <div>Oklab nie ma zdefiniowanych końców</div>
+                <ul>
+                    <li data-reveal="2" class="reveal-fade">Można stworzyć niemożliwe kolory ustawiając a i b na zbyt duże wartości</li>
+                    <li data-reveal="3" class="reveal-fade">Nie ma jednego limitu odległości od zera, to zależy od barwy</li>
+                </ul>
+            </li>
+            <li data-reveal="4" class="reveal-fade">
+                <div>Ekrany ciągle działają w sRGB</div>
+                <ul data-reveal="5" class="reveal-fade">
+                    <li>Kształt gamy sRGB jest bardzo nieregularny w Oklab</li>
+                    <li>Dlatego Oklab słabo nadaje się do wybierania kolorów które mają być wyświetlone na ekranie</li>
+                </ul>
+            </li>
+
+        </ul>
+    </div>
+    <div class="slide">
+        <h2>Słabe strony Oklab</h2>
+        <ul>
+            <li>
+                <div>Oklab jest bardziej wymagający pamięciowo</div>
+                <ul>
+                    <li data-reveal="1" class="reveal-fade">Oklab (typowo) wymaga trzech liczb zmiennoprzecinkowych, zwykle 32-bitowych (a więc 12 bajtów na kolor)</li>
+                    <li data-reveal="2" class="reveal-fade">Kolor w sRGB można łatwo zmieścić używając 1 bajtu na każdą składową (a więc 3 bajty na kolor)</li>
+                </ul>
+            </li>
+        </ul>
     </div>
     <div class="slide">
         <h2>Dziękuję za uwagę!</h2>
