@@ -12,13 +12,14 @@
     <link rel="stylesheet" href="./style.css">
     <script defer src="./slideshow.js"></script>
     <script defer src="./hsv-color-picker.js"></script>
+    <script defer src="./light-mix.js"></script>
 </head>
 
 <body>
     <div class="slide title">
         <hgroup>
             <h1>Przestrzenie kolorów</h1>
-            <p>czyli sztuka kompromisu sztuki</p>
+            <p>czyli kompromis grafiki cyfrowej</p>
         </hgroup>
         <p>Mateusz Bartnik</p>
     </div>
@@ -42,6 +43,47 @@
             <li>Aby taką trójkę zamienić w rzeczywisty kolor, potrzebna jest przestrzeń koloru</li>
             <li>Tą rolę zwykle przyjmuje przestrzeń sRGB</li>
         </ul>
+    </div>
+    <div class="slide flexible">
+        <h2>Dlaczego RGB?</h2>
+        <p>
+            Ludzkie oko zawiera trzy rodzaje czopków (komórek wykrywających kolory).
+        </p>
+        <ul>
+            <li>Czopki typu L najbardziej reagują na światło czerwone</li>
+            <li>Czopki typu M najbardziej reagują na światło zielone</li>
+            <li>Czopki typu S najbardziej reagują na światło niebieskie</li>
+        </ul>
+        <img src="./cone-fundamentals.svg" class="flex-target" style="align-self: center"
+            alt="Wykres reakcji typów czopków od częstotliwości światła">
+    </div>
+    <div class="slide flexible">
+        <h2>Sześcian RGB</h2>
+        <iframe src="./graphic-rgb-cube.html" class="flex-target fullscreen-iframe"></iframe>
+    </div>
+    <div class="slide">
+        <h2>Mieszanie kolorów światła</h2>
+        <div id="light-mix">
+            <div class="light-mix-row" id="light-mix-row-red">
+                <div class="light-mix-swatch"></div>
+                <input type="range" min="0" max="255" value="147">
+                <div class="light-mix-numeric"></div>
+            </div>
+            <div class="light-mix-row" id="light-mix-row-green">
+                <div class="light-mix-swatch"></div>
+                <input type="range" min="0" max="255" value="112">
+                <div class="light-mix-numeric"></div>
+            </div>
+            <div class="light-mix-row" id="light-mix-row-blue">
+                <div class="light-mix-swatch"></div>
+                <input type="range" min="0" max="255" value="216">
+                <div class="light-mix-numeric"></div>
+            </div>
+            <hr>
+            <div class="light-mix-row">
+                <div class="light-mix-swatch" id="light-mix-swatch-combined"></div>
+            </div>
+        </div>
     </div>
     <div class="slide flexible">
         <h2>HSV, czyli walcowa forma sRGB</h2>
@@ -79,22 +121,8 @@
         </div>
     </div>
     <div class="slide flexible">
-        <h2>Dlaczego RGB?</h2>
-        <p>
-            Ludzkie oko zawiera trzy rodzaje czopków (komórek wykrywających kolory).
-        </p>
-        <ul>
-            <li>Czopki typu L najbardziej reagują na światło czerwone</li>
-            <li>Czopki typu M najbardziej reagują na światło zielone</li>
-            <li>Czopki typu S najbardziej reagują na światło niebieskie</li>
-        </ul>
-        <img src="./cone-fundamentals.svg" class="flex-target" style="align-self: center"
-            alt="Wykres reakcji typów czopków od częstotliwości światła">
-        <!--
-            sRGB definiuje kolor światła czerwonego, zielonego i niebieskiego,
-            i komponenty koloru mówią ile każdego światła użyć.
-            Ale sRGB definiuje coś jeszcze...
-        -->
+        <h2>HSV w sześcianie RGB</h2>
+        <iframe src="./graphic-hsv-cube.html" class="flex-target fullscreen-iframe"></iframe>
     </div>
     <div class="slide flexible">
         <h2>Korekcja gamma</h2>
@@ -166,7 +194,7 @@
         <h2>...to nie tylko zalety</h2>
         <p>
             Jako, że ilość światła nie jest wprost proporcjonalna do wartości komponentu,
-            robienie matematyki na ilościach światła powoduje... średnie rezultaty.
+            robienie matematyki na komponentach powoduje... średnie rezultaty.
         </p>
         <div id="srgb-gradient" class="gradient-demo srgb-gradient">
             sRGB
@@ -242,7 +270,7 @@
         <div id="oklab-gradient" class="gradient-demo oklab-gradient reveal-fade" data-reveal="1">
             Oklab
         </div>
-        <div class="gradient-demo srgb-linear-gradient reveal-fade" data-reveal="2">
+        <div class="gradient-demo srgb-linear-gradient reveal-fade" data-reveal="1">
             Liniowe sRGB
         </div>
     </div>
@@ -351,9 +379,9 @@
                         <mo>]</mo>
                         <mo>[</mo>
                         <mtable rowspacing="0.5ex">
-                            <mtr><mtd><mi>R'</mi></mtd></mtr>
-                            <mtr><mtd><mi>G'</mi></mtd></mtr>
-                            <mtr><mtd><mi>B'</mi></mtd></mtr>
+                            <mtr><mtd><mi>R</mi></mtd></mtr>
+                            <mtr><mtd><mi>G</mi></mtd></mtr>
+                            <mtr><mtd><mi>B</mi></mtd></mtr>
                         </mtable>
                         <mo>]</mo>
                     </mrow>
@@ -440,7 +468,7 @@
     </div>
     <div class="slide flexible">
         <h2>Kolory reprezentowalne w sRGB</h2>
-        <iframe src="./graphic.html" id="oklab-srgb-gamut" class="flex-target"></iframe>
+        <iframe src="./graphic-oklab-gamut.html" class="flex-target fullscreen-iframe"></iframe>
     </div>
     <div class="slide">
         <h2>Słabe strony Oklab</h2>
@@ -458,11 +486,11 @@
         <h2>Wymaganie pamięciowe</h2>
         <div id="image-dimensions-box" class="flex-target">
             <div id="image-dimensions-wrapper">
-                <div id="image-dimensions-horizontal">4624</div>
+                <div id="image-dimensions-horizontal" class="reveal-fade" data-reveal="1">4624</div>
                 <img src="./golden-pi-creature.webp" alt="Majestatyczne złote stworzenie pi wraz z przyjacielskim szpiegiem z kodem tej prezentacji w tle">
-                <div id="image-dimensions-vertical">3472</div>
+                <div id="image-dimensions-vertical" class="reveal-fade" data-reveal="1">3472</div>
             </div>
-            <p>4624 &sdot; 3472 = 16 054 528 px</p>
+            <p class="reveal-fade" data-reveal="2">4624 &sdot; 3472 = 16 054 528 px</p>
         </div>
     </div>
     <div class="slide">

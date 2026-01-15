@@ -1,0 +1,647 @@
+<!DOCTYPE html>
+<html><head>
+<title></title>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+<style>
+
+    body { margin: 0px; overflow: hidden; }
+
+    #menu-container { position: absolute; bottom: 30px; right: 40px; cursor: default; }
+
+    #menu-message { position: absolute; bottom: 0px; right: 0px; white-space: nowrap;
+                    display: none; background-color: #F5F5F5; padding: 10px; }
+
+    #menu-content { position: absolute; bottom: 0px; right: 0px;
+                    display: none; background-color: #F5F5F5; border-bottom: 1px solid black;
+                    border-right: 1px solid black; border-left: 1px solid black; }
+
+    #menu-content div { border-top: 1px solid black; padding: 10px; white-space: nowrap; }
+
+    #menu-content div:hover { background-color: #FEFEFE; }
+
+    .dark-theme #menu-container { color: white; }
+
+    .dark-theme #menu-message { background-color: #181818; }
+
+    .dark-theme #menu-content { background-color: #181818; border-color: white; }
+
+    .dark-theme #menu-content div { border-color: white; }
+
+    .dark-theme #menu-content div:hover { background-color: #303030; }
+
+</style>
+
+</head>
+
+<body>
+
+<script src="https://cdn.jsdelivr.net/gh/sagemath/threejs-sage@r124/build/three.min.js"></script>
+            <script>// fat_lines.js
+
+var _fatLines = [];
+
+function _createFatLine( lineStrip, geometry, materialOptions ) {
+
+    var vertexCount = geometry.vertices.length;
+    var positions = [];
+    for ( var i=0 ; i < vertexCount ; i++ ) {
+        var v = geometry.vertices[i];
+        positions.push( v.x, v.y, v.z );
+        // For a line strip, duplicate all but the first and last vertices.
+        if ( lineStrip && i > 0 && i < vertexCount - 1 ) {
+            positions.push( v.x, v.y, v.z );
+        }
+    }
+
+    geometry = new THREE.LineSegmentsGeometry();
+    geometry.setPositions( positions );
+
+    var material = new THREE.LineMaterial( materialOptions );
+    material.resolution = new THREE.Vector2( window.innerWidth, window.innerHeight );
+
+    var line = new THREE.LineSegments2( geometry, material );
+    line.computeLineDistances();
+    line.scale.set( 1, 1, 1 );
+
+    _fatLines.push( line );
+
+    return line;
+
+}
+
+function createFatLineStrip( geometry, materialOptions ) {
+    return _createFatLine( true, geometry, materialOptions );
+}
+
+function createFatLineSegments( geometry, materialOptions ) {
+    return _createFatLine( false, geometry, materialOptions );
+}
+
+function rescaleFatLines() {
+    var res = new THREE.Vector2( window.innerWidth, window.innerHeight );
+    var n = _fatLines.length;
+    for ( var i=0 ; i < n ; i++ ) {
+        _fatLines[i].material.resolution = res;
+    }
+}
+</script>
+<script>
+
+    var options = {"animate": false, "animationControls": true, "aspectRatio": [1.0, 1.0, 1.0], "autoScaling": [false, false, false], "autoPlay": true, "axes": false, "axesLabels": ["r", "g", "b"], "axesLabelsStyle": null, "decimals": 2, "delay": 20, "frame": true, "loop": true, "projection": "perspective", "theme": "light", "viewpoint": false};
+    var animate = options.animate;
+
+    if ( options.theme === 'dark' )
+        document.body.className = 'dark-theme';
+
+    var scene = new THREE.Scene();
+
+    var renderer = new THREE.WebGLRenderer( { antialias: true, preserveDrawingBuffer: true } );
+    renderer.setPixelRatio( window.devicePixelRatio );
+    renderer.setSize( window.innerWidth, window.innerHeight );
+    renderer.setClearColor( options.theme === 'dark' ? 0 : 0xffffff, 1 );
+    document.body.appendChild( renderer.domElement );
+
+    var b = [{"x":0.0, "y":0.0, "z":0.0}, {"x":1.0, "y":1.0, "z":1.0}]; // bounds
+
+    if ( b[0].x === b[1].x ) {
+        b[0].x -= 1;
+        b[1].x += 1;
+    }
+    if ( b[0].y === b[1].y ) {
+        b[0].y -= 1;
+        b[1].y += 1;
+    }
+    if ( b[0].z === b[1].z ) {
+        b[0].z -= 1;
+        b[1].z += 1;
+    }
+
+    var rxRange = Math.sqrt( Math.pow( b[1].z - b[0].z, 2 )
+                            + Math.pow( b[1].y - b[0].y, 2 ) );
+    var ryRange = Math.sqrt( Math.pow( b[1].x - b[0].x, 2 )
+                            + Math.pow( b[1].z - b[0].z, 2 ) );
+    var rzRange = Math.sqrt( Math.pow( b[1].x - b[0].x, 2 )
+                            + Math.pow( b[1].y - b[0].y, 2 ) );
+    var xRange = b[1].x - b[0].x;
+    var yRange = b[1].y - b[0].y;
+    var zRange = b[1].z - b[0].z;
+
+    var ar = options.aspectRatio;
+    var a = [ ar[0], ar[1], ar[2] ]; // aspect multipliers
+
+    var autoScaling = options.autoScaling;
+    var autoAspect = 2.5;
+    if ( xRange > autoAspect * rxRange && autoScaling[0] ) a[0] = autoAspect * rxRange / xRange;
+    if ( yRange > autoAspect * ryRange && autoScaling[1] ) a[1] = autoAspect * ryRange / yRange;
+    if ( zRange > autoAspect * rzRange && autoScaling[2] ) a[2] = autoAspect * rzRange / zRange;
+
+    // Distance from (xMid,yMid,zMid) to any corner of the bounding box, after applying aspectRatio
+    var midToCorner = Math.sqrt( a[0]*a[0]*xRange*xRange + a[1]*a[1]*yRange*yRange + a[2]*a[2]*zRange*zRange ) / 2;
+
+    var xMid = ( b[0].x + b[1].x ) / 2;
+    var yMid = ( b[0].y + b[1].y ) / 2;
+    var zMid = ( b[0].z + b[1].z ) / 2;
+
+    var box = new THREE.Geometry();
+    box.vertices.push( new THREE.Vector3( a[0]*b[0].x, a[1]*b[0].y, a[2]*b[0].z ) );
+    box.vertices.push( new THREE.Vector3( a[0]*b[1].x, a[1]*b[1].y, a[2]*b[1].z ) );
+    var boxMesh = new THREE.Line( box );
+    var boxColor = options.theme === 'dark' ? 'white' : 'black';
+    if ( options.frame ) scene.add( new THREE.BoxHelper( boxMesh, boxColor ) );
+
+    if ( options.axesLabels ) {
+
+        var d = options.decimals; // decimals
+        var offsetRatio = 0.1;
+        var al = options.axesLabels;
+        var als = options.axesLabelsStyle || [{}, {}, {}];
+
+        var offset = offsetRatio * a[1]*( b[1].y - b[0].y );
+        var xm = xMid.toFixed(d);
+        if ( /^-0.?0*$/.test(xm) ) xm = xm.substr(1);
+        addLabel( al[0] + '=' + xm, a[0]*xMid, a[1]*b[1].y+offset, a[2]*b[0].z, als[0] );
+        addLabel( ( b[0].x ).toFixed(d), a[0]*b[0].x, a[1]*b[1].y+offset, a[2]*b[0].z, als[0] );
+        addLabel( ( b[1].x ).toFixed(d), a[0]*b[1].x, a[1]*b[1].y+offset, a[2]*b[0].z, als[0] );
+
+        var offset = offsetRatio * a[0]*( b[1].x - b[0].x );
+        var ym = yMid.toFixed(d);
+        if ( /^-0.?0*$/.test(ym) ) ym = ym.substr(1);
+        addLabel( al[1] + '=' + ym, a[0]*b[1].x+offset, a[1]*yMid, a[2]*b[0].z, als[1] );
+        addLabel( ( b[0].y ).toFixed(d), a[0]*b[1].x+offset, a[1]*b[0].y, a[2]*b[0].z, als[1] );
+        addLabel( ( b[1].y ).toFixed(d), a[0]*b[1].x+offset, a[1]*b[1].y, a[2]*b[0].z, als[1] );
+
+        var offset = offsetRatio * a[1]*( b[1].y - b[0].y );
+        var zm = zMid.toFixed(d);
+        if ( /^-0.?0*$/.test(zm) ) zm = zm.substr(1);
+        addLabel( al[2] + '=' + zm, a[0]*b[1].x, a[1]*b[0].y-offset, a[2]*zMid, als[2] );
+        addLabel( ( b[0].z ).toFixed(d), a[0]*b[1].x, a[1]*b[0].y-offset, a[2]*b[0].z, als[2] );
+        addLabel( ( b[1].z ).toFixed(d), a[0]*b[1].x, a[1]*b[0].y-offset, a[2]*b[1].z, als[2] );
+
+    }
+
+    function addLabel( text, x, y, z, style ) {
+
+        var color = style.color || 'black';
+        var fontSize = style.fontSize || 14;
+        var fontFamily = style.fontFamily || 'monospace';
+        var fontStyle = style.fontStyle || 'normal';
+        var fontWeight = style.fontWeight || 'normal';
+        var opacity = style.opacity || 1;
+
+        if ( options.theme === 'dark' )
+            if ( color === 'black' || color === '#000000' )
+                color = 'white';
+
+        if ( Array.isArray( fontStyle ) ) {
+            fontFamily = fontFamily.map( function( f ) {
+                // Need to put quotes around fonts that have whitespace in their names.
+                return /\s/.test( f ) ? '"' + f + '"' : f;
+            }).join(', ');
+        }
+
+        var canvas = document.createElement( 'canvas' );
+        var context = canvas.getContext( '2d' );
+        var pixelRatio = Math.round( window.devicePixelRatio );
+
+        // For example: italic bold 20px "Times New Roman", Georgia, serif
+        var font = [fontStyle, fontWeight, fontSize + 'px', fontFamily].join(' ');
+
+        context.font = font;
+        var width = context.measureText( text ).width;
+        var height = fontSize;
+
+        // The dimensions of the canvas's underlying image data need to be powers
+        // of two in order for the resulting texture to support mipmapping.
+        canvas.width = THREE.MathUtils.ceilPowerOfTwo( width * pixelRatio );
+        canvas.height = THREE.MathUtils.ceilPowerOfTwo( height * pixelRatio );
+
+        // Re-compute the unscaled dimensions after the power of two conversion.
+        width = canvas.width / pixelRatio;
+        height = canvas.height / pixelRatio;
+
+        canvas.style.width = width + 'px';
+        canvas.style.height = height + 'px';
+
+        context.scale( pixelRatio, pixelRatio );
+        context.fillStyle = color;
+        context.font = font; // Must be set again after measureText.
+        context.textAlign = 'center';
+        context.textBaseline = 'middle';
+        context.fillText( text, width/2, height/2 );
+
+        var texture = new THREE.Texture( canvas );
+        texture.needsUpdate = true;
+
+        var materialOptions = { map: texture, sizeAttenuation: false, depthWrite: false };
+        if ( opacity < 1 ) {
+            // Setting opacity=1 would cause the texture's alpha component to be
+            // discarded, giving the text a black background instead of the
+            // background being transparent.
+            materialOptions.opacity = opacity;
+        }
+        var sprite = new THREE.Sprite( new THREE.SpriteMaterial( materialOptions ) );
+        sprite.position.set( x, y, z );
+
+        // Scaling factor, chosen somewhat arbitrarily so that the size of the text
+        // is consistent with previously generated plots.
+        var scale = 1/625;
+        if ( options.projection === 'orthographic' ) {
+            scale = midToCorner/256; // Needs to scale along with the plot itself.
+        }
+        sprite.scale.set( scale * width, scale * height, 1 );
+
+        scene.add( sprite );
+
+        return sprite;
+
+    }
+
+    if ( options.axes ) scene.add( new THREE.AxesHelper( Math.min( a[0]*b[1].x, a[1]*b[1].y, a[2]*b[1].z ) ) );
+
+    var camera = createCamera();
+    camera.up.set( 0, 0, 1 );
+    camera.position.set( a[0]*xMid, a[1]*yMid, a[2]*zMid );
+
+    // camera is positioned so that the line from the camera to the center
+    // of the bounding sphere of the objects makes an angle of 60 degrees with x-axis
+    // and an angle of 30 degrees with z-axis and the field of view of the camera looking
+    // at the center has an angle of 45 degrees.
+    const sin8 = Math.sin(Math.PI / 8);
+    const sin5 = Math.sin(Math.PI / 5);
+    const cos5 = Math.cos(Math.PI / 5);
+    const sin3 = Math.sin(Math.PI / 3);
+    const cos3 = Math.cos(Math.PI / 3);
+    var r = midToCorner / sin8;
+    var offset = new THREE.Vector3( r * sin3 * cos5, r * sin3 * sin5, r * cos3 );
+
+    if ( options.viewpoint ) {
+
+        var aa = options.viewpoint;
+        var axis = new THREE.Vector3( aa[0][0], aa[0][1], aa[0][2] ).normalize();
+        var angle = aa[1] * Math.PI / 180;
+        var q = new THREE.Quaternion().setFromAxisAngle( axis, angle ).inverse();
+
+        offset.set( 0, 0, offset.length() );
+        offset.applyQuaternion( q );
+
+    }
+
+    camera.position.add( offset );
+
+    function createCamera() {
+
+        var aspect = window.innerWidth / window.innerHeight;
+
+        // Scale the near and far clipping planes along with the overall plot size.
+        var nearClip = 0.01 * midToCorner;
+        var farClip = 100 * midToCorner;
+
+        if ( options.projection === 'orthographic' ) {
+            var camera = new THREE.OrthographicCamera( -1, 1, 1, -1, -farClip, farClip );
+            updateCameraAspect( camera, aspect );
+            return camera;
+        }
+
+        return new THREE.PerspectiveCamera( 45, aspect, nearClip, farClip );
+
+    }
+
+    function updateCameraAspect( camera, aspect ) {
+
+        if ( camera.isPerspectiveCamera ) {
+            camera.aspect = aspect;
+        } else if ( camera.isOrthographicCamera ) {
+            // Fit the camera frustum to the bounding box's diagonal so that the entire plot fits
+            // within at the default zoom level and camera position.
+            if ( aspect > 1 ) { // Wide window
+                camera.top = midToCorner;
+                camera.right = midToCorner * aspect;
+            } else { // Tall or square window
+                camera.top = midToCorner / aspect;
+                camera.right = midToCorner;
+            }
+            camera.bottom = -camera.top;
+            camera.left = -camera.right;
+        }
+
+        camera.updateProjectionMatrix();
+
+    }
+
+    var lights = [{"x":-5, "y":3, "z":0, "color":"#7f7f7f", "parent":"camera"}];
+    for ( var i=0 ; i < lights.length ; i++ ) {
+        var light = new THREE.DirectionalLight( lights[i].color, 1 );
+        light.position.set( a[0]*lights[i].x, a[1]*lights[i].y, a[2]*lights[i].z );
+        if ( lights[i].parent === 'camera' ) {
+            light.target.position.set( a[0]*xMid, a[1]*yMid, a[2]*zMid );
+            scene.add( light.target );
+            camera.add( light );
+        } else scene.add( light );
+    }
+    scene.add( camera );
+
+    var ambient = {"color":"#7f7f7f"};
+    scene.add( new THREE.AmbientLight( ambient.color, 1 ) );
+
+    var controls = new THREE.OrbitControls( camera, renderer.domElement );
+    controls.target.set( a[0]*xMid, a[1]*yMid, a[2]*zMid );
+    controls.addEventListener( 'change', function() { if ( !animate ) render(); } );
+
+    window.addEventListener( 'resize', function() {
+
+        renderer.setSize( window.innerWidth, window.innerHeight );
+        updateCameraAspect( camera, window.innerWidth / window.innerHeight );
+        if ( window.rescaleFatLines ) rescaleFatLines();
+        if ( !animate ) render();
+
+    } );
+
+    var texts = [];
+    for ( var i=0 ; i < texts.length ; i++ ) addText( texts[i] );
+
+    function addText( json ) {
+        var sprite = addLabel( json.text, a[0]*json.x, a[1]*json.y, a[2]*json.z, json );
+        sprite.userData = json;
+    }
+
+    var points = [];
+    for ( var i=0 ; i < points.length ; i++ ) addPoint( points[i] );
+
+    function addPoint( json ) {
+
+        var geometry = new THREE.Geometry();
+        var v = json.point;
+        geometry.vertices.push( new THREE.Vector3( a[0]*v[0], a[1]*v[1], a[2]*v[2] ) );
+
+        var canvas = document.createElement( 'canvas' );
+        canvas.width = 128;
+        canvas.height = 128;
+
+        var context = canvas.getContext( '2d' );
+        context.arc( 64, 64, 64, 0, 2 * Math.PI );
+        context.fillStyle = json.color;
+        context.fill();
+
+        var texture = new THREE.Texture( canvas );
+        texture.needsUpdate = true;
+
+        var transparent = json.opacity < 1 ? true : false;
+        var size = camera.isOrthographicCamera ? json.size : json.size/100;
+        var material = new THREE.PointsMaterial( { size: size, map: texture,
+                                                   transparent: transparent, opacity: json.opacity,
+                                                   alphaTest: .1 } );
+
+        var c = new THREE.Vector3();
+        geometry.computeBoundingBox();
+        geometry.boundingBox.getCenter( c );
+        geometry.translate( -c.x, -c.y, -c.z );
+
+        var mesh = new THREE.Points( geometry, material );
+        mesh.position.set( c.x, c.y, c.z );
+        mesh.userData = json;
+        scene.add( mesh );
+
+    }
+
+    var lines = [{"points": [[1.0, 0.0, 0.0], [1.0, 0.033333333333333215, 0.0]], "color": "#ff0000", "opacity": 1.0, "linewidth": 8.0}, {"points": [[1.0, 0.033333333333333215, 0.0], [1.0, 0.06666666666666687, 0.0]], "color": "#ff0800", "opacity": 1.0, "linewidth": 8.0}, {"points": [[1.0, 0.06666666666666687, 0.0], [1.0, 0.10000000000000009, 0.0]], "color": "#ff1100", "opacity": 1.0, "linewidth": 8.0}, {"points": [[1.0, 0.10000000000000009, 0.0], [1.0, 0.1333333333333333, 0.0]], "color": "#ff1900", "opacity": 1.0, "linewidth": 8.0}, {"points": [[1.0, 0.1333333333333333, 0.0], [1.0, 0.16666666666666652, 0.0]], "color": "#ff2100", "opacity": 1.0, "linewidth": 8.0}, {"points": [[1.0, 0.16666666666666652, 0.0], [1.0, 0.20000000000000018, 0.0]], "color": "#ff2a00", "opacity": 1.0, "linewidth": 8.0}, {"points": [[1.0, 0.20000000000000018, 0.0], [1.0, 0.2333333333333334, 0.0]], "color": "#ff3300", "opacity": 1.0, "linewidth": 8.0}, {"points": [[1.0, 0.2333333333333334, 0.0], [1.0, 0.2666666666666666, 0.0]], "color": "#ff3b00", "opacity": 1.0, "linewidth": 8.0}, {"points": [[1.0, 0.2666666666666666, 0.0], [1.0, 0.2999999999999998, 0.0]], "color": "#ff4300", "opacity": 1.0, "linewidth": 8.0}, {"points": [[1.0, 0.2999999999999998, 0.0], [1.0, 0.3333333333333335, 0.0]], "color": "#ff4c00", "opacity": 1.0, "linewidth": 8.0}, {"points": [[1.0, 0.3333333333333335, 0.0], [1.0, 0.3666666666666667, 0.0]], "color": "#ff5500", "opacity": 1.0, "linewidth": 8.0}, {"points": [[1.0, 0.3666666666666667, 0.0], [1.0, 0.3999999999999999, 0.0]], "color": "#ff5d00", "opacity": 1.0, "linewidth": 8.0}, {"points": [[1.0, 0.3999999999999999, 0.0], [1.0, 0.4333333333333331, 0.0]], "color": "#ff6500", "opacity": 1.0, "linewidth": 8.0}, {"points": [[1.0, 0.4333333333333331, 0.0], [1.0, 0.4666666666666668, 0.0]], "color": "#ff6e00", "opacity": 1.0, "linewidth": 8.0}, {"points": [[1.0, 0.4666666666666668, 0.0], [1.0, 0.5, 0.0]], "color": "#ff7700", "opacity": 1.0, "linewidth": 8.0}, {"points": [[1.0, 0.5, 0.0], [1.0, 0.5333333333333332, 0.0]], "color": "#ff7f00", "opacity": 1.0, "linewidth": 8.0}, {"points": [[1.0, 0.5333333333333332, 0.0], [1.0, 0.5666666666666669, 0.0]], "color": "#ff8700", "opacity": 1.0, "linewidth": 8.0}, {"points": [[1.0, 0.5666666666666669, 0.0], [1.0, 0.6000000000000001, 0.0]], "color": "#ff9000", "opacity": 1.0, "linewidth": 8.0}, {"points": [[1.0, 0.6000000000000001, 0.0], [1.0, 0.6333333333333333, 0.0]], "color": "#ff9900", "opacity": 1.0, "linewidth": 8.0}, {"points": [[1.0, 0.6333333333333333, 0.0], [1.0, 0.6666666666666665, 0.0]], "color": "#ffa100", "opacity": 1.0, "linewidth": 8.0}, {"points": [[1.0, 0.6666666666666665, 0.0], [1.0, 0.7000000000000002, 0.0]], "color": "#ffa900", "opacity": 1.0, "linewidth": 8.0}, {"points": [[1.0, 0.7000000000000002, 0.0], [1.0, 0.7333333333333334, 0.0]], "color": "#ffb200", "opacity": 1.0, "linewidth": 8.0}, {"points": [[1.0, 0.7333333333333334, 0.0], [1.0, 0.7666666666666666, 0.0]], "color": "#ffbb00", "opacity": 1.0, "linewidth": 8.0}, {"points": [[1.0, 0.7666666666666666, 0.0], [1.0, 0.7999999999999998, 0.0]], "color": "#ffc300", "opacity": 1.0, "linewidth": 8.0}, {"points": [[1.0, 0.7999999999999998, 0.0], [1.0, 0.8333333333333335, 0.0]], "color": "#ffcb00", "opacity": 1.0, "linewidth": 8.0}, {"points": [[1.0, 0.8333333333333335, 0.0], [1.0, 0.8666666666666667, 0.0]], "color": "#ffd400", "opacity": 1.0, "linewidth": 8.0}, {"points": [[1.0, 0.8666666666666667, 0.0], [1.0, 0.8999999999999999, 0.0]], "color": "#ffdd00", "opacity": 1.0, "linewidth": 8.0}, {"points": [[1.0, 0.8999999999999999, 0.0], [1.0, 0.9333333333333331, 0.0]], "color": "#ffe500", "opacity": 1.0, "linewidth": 8.0}, {"points": [[1.0, 0.9333333333333331, 0.0], [1.0, 0.9666666666666668, 0.0]], "color": "#ffed00", "opacity": 1.0, "linewidth": 8.0}, {"points": [[1.0, 0.9666666666666668, 0.0], [1.0, 1.0, 0.0]], "color": "#fff600", "opacity": 1.0, "linewidth": 8.0}, {"points": [[1.0, 1.0, 0.0], [0.9666666666666668, 1.0, 0.0]], "color": "#ffff00", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.9666666666666668, 1.0, 0.0], [0.9333333333333336, 1.0, 0.0]], "color": "#f6ff00", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.9333333333333336, 1.0, 0.0], [0.9000000000000004, 1.0, 0.0]], "color": "#eeff00", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.9000000000000004, 1.0, 0.0], [0.8666666666666663, 1.0, 0.0]], "color": "#e5ff00", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.8666666666666663, 1.0, 0.0], [0.833333333333333, 1.0, 0.0]], "color": "#dcff00", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.833333333333333, 1.0, 0.0], [0.7999999999999998, 1.0, 0.0]], "color": "#d4ff00", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.7999999999999998, 1.0, 0.0], [0.7666666666666666, 1.0, 0.0]], "color": "#cbff00", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.7666666666666666, 1.0, 0.0], [0.7333333333333334, 1.0, 0.0]], "color": "#c3ff00", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.7333333333333334, 1.0, 0.0], [0.7000000000000002, 1.0, 0.0]], "color": "#bbff00", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.7000000000000002, 1.0, 0.0], [0.666666666666667, 1.0, 0.0]], "color": "#b2ff00", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.666666666666667, 1.0, 0.0], [0.6333333333333337, 1.0, 0.0]], "color": "#aaff00", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.6333333333333337, 1.0, 0.0], [0.5999999999999996, 1.0, 0.0]], "color": "#a1ff00", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.5999999999999996, 1.0, 0.0], [0.5666666666666664, 1.0, 0.0]], "color": "#98ff00", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.5666666666666664, 1.0, 0.0], [0.5333333333333332, 1.0, 0.0]], "color": "#90ff00", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.5333333333333332, 1.0, 0.0], [0.5, 1.0, 0.0]], "color": "#87ff00", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.5, 1.0, 0.0], [0.4666666666666668, 1.0, 0.0]], "color": "#7fff00", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.4666666666666668, 1.0, 0.0], [0.43333333333333357, 1.0, 0.0]], "color": "#77ff00", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.43333333333333357, 1.0, 0.0], [0.40000000000000036, 1.0, 0.0]], "color": "#6eff00", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.40000000000000036, 1.0, 0.0], [0.36666666666666625, 1.0, 0.0]], "color": "#66ff00", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.36666666666666625, 1.0, 0.0], [0.33333333333333304, 1.0, 0.0]], "color": "#5dff00", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.33333333333333304, 1.0, 0.0], [0.2999999999999998, 1.0, 0.0]], "color": "#54ff00", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.2999999999999998, 1.0, 0.0], [0.2666666666666666, 1.0, 0.0]], "color": "#4cff00", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.2666666666666666, 1.0, 0.0], [0.2333333333333334, 1.0, 0.0]], "color": "#43ff00", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.2333333333333334, 1.0, 0.0], [0.20000000000000018, 1.0, 0.0]], "color": "#3bff00", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.20000000000000018, 1.0, 0.0], [0.16666666666666696, 1.0, 0.0]], "color": "#33ff00", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.16666666666666696, 1.0, 0.0], [0.13333333333333375, 1.0, 0.0]], "color": "#2aff00", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.13333333333333375, 1.0, 0.0], [0.09999999999999964, 1.0, 0.0]], "color": "#22ff00", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.09999999999999964, 1.0, 0.0], [0.06666666666666643, 1.0, 0.0]], "color": "#19ff00", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.06666666666666643, 1.0, 0.0], [0.033333333333333215, 1.0, 0.0]], "color": "#10ff00", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.033333333333333215, 1.0, 0.0], [0.0, 1.0, 0.0]], "color": "#08ff00", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.0, 1.0, 0.0], [0.0, 1.0, 0.033333333333333215]], "color": "#00ff00", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.0, 1.0, 0.033333333333333215], [0.0, 1.0, 0.06666666666666687]], "color": "#00ff08", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.0, 1.0, 0.06666666666666687], [0.0, 1.0, 0.10000000000000009]], "color": "#00ff11", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.0, 1.0, 0.10000000000000009], [0.0, 1.0, 0.1333333333333333]], "color": "#00ff19", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.0, 1.0, 0.1333333333333333], [0.0, 1.0, 0.16666666666666652]], "color": "#00ff21", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.0, 1.0, 0.16666666666666652], [0.0, 1.0, 0.20000000000000018]], "color": "#00ff2a", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.0, 1.0, 0.20000000000000018], [0.0, 1.0, 0.2333333333333334]], "color": "#00ff33", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.0, 1.0, 0.2333333333333334], [0.0, 1.0, 0.2666666666666666]], "color": "#00ff3b", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.0, 1.0, 0.2666666666666666], [0.0, 1.0, 0.2999999999999998]], "color": "#00ff43", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.0, 1.0, 0.2999999999999998], [0.0, 1.0, 0.3333333333333335]], "color": "#00ff4c", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.0, 1.0, 0.3333333333333335], [0.0, 1.0, 0.3666666666666667]], "color": "#00ff55", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.0, 1.0, 0.3666666666666667], [0.0, 1.0, 0.3999999999999999]], "color": "#00ff5d", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.0, 1.0, 0.3999999999999999], [0.0, 1.0, 0.4333333333333331]], "color": "#00ff65", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.0, 1.0, 0.4333333333333331], [0.0, 1.0, 0.4666666666666668]], "color": "#00ff6e", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.0, 1.0, 0.4666666666666668], [0.0, 1.0, 0.5]], "color": "#00ff77", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.0, 1.0, 0.5], [0.0, 1.0, 0.5333333333333332]], "color": "#00ff7f", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.0, 1.0, 0.5333333333333332], [0.0, 1.0, 0.5666666666666669]], "color": "#00ff87", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.0, 1.0, 0.5666666666666669], [0.0, 1.0, 0.6000000000000001]], "color": "#00ff90", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.0, 1.0, 0.6000000000000001], [0.0, 1.0, 0.6333333333333333]], "color": "#00ff99", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.0, 1.0, 0.6333333333333333], [0.0, 1.0, 0.6666666666666665]], "color": "#00ffa1", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.0, 1.0, 0.6666666666666665], [0.0, 1.0, 0.7000000000000002]], "color": "#00ffa9", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.0, 1.0, 0.7000000000000002], [0.0, 1.0, 0.7333333333333334]], "color": "#00ffb2", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.0, 1.0, 0.7333333333333334], [0.0, 1.0, 0.7666666666666666]], "color": "#00ffbb", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.0, 1.0, 0.7666666666666666], [0.0, 1.0, 0.7999999999999998]], "color": "#00ffc3", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.0, 1.0, 0.7999999999999998], [0.0, 1.0, 0.8333333333333335]], "color": "#00ffcb", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.0, 1.0, 0.8333333333333335], [0.0, 1.0, 0.8666666666666667]], "color": "#00ffd4", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.0, 1.0, 0.8666666666666667], [0.0, 1.0, 0.8999999999999999]], "color": "#00ffdd", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.0, 1.0, 0.8999999999999999], [0.0, 1.0, 0.9333333333333331]], "color": "#00ffe5", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.0, 1.0, 0.9333333333333331], [0.0, 1.0, 0.9666666666666668]], "color": "#00ffed", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.0, 1.0, 0.9666666666666668], [0.0, 1.0, 1.0]], "color": "#00fff6", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.0, 1.0, 1.0], [0.0, 0.9666666666666668, 1.0]], "color": "#00ffff", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.0, 0.9666666666666668, 1.0], [0.0, 0.9333333333333336, 1.0]], "color": "#00f6ff", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.0, 0.9333333333333336, 1.0], [0.0, 0.9000000000000004, 1.0]], "color": "#00eeff", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.0, 0.9000000000000004, 1.0], [0.0, 0.8666666666666663, 1.0]], "color": "#00e5ff", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.0, 0.8666666666666663, 1.0], [0.0, 0.833333333333333, 1.0]], "color": "#00dcff", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.0, 0.833333333333333, 1.0], [0.0, 0.7999999999999998, 1.0]], "color": "#00d4ff", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.0, 0.7999999999999998, 1.0], [0.0, 0.7666666666666666, 1.0]], "color": "#00cbff", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.0, 0.7666666666666666, 1.0], [0.0, 0.7333333333333334, 1.0]], "color": "#00c3ff", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.0, 0.7333333333333334, 1.0], [0.0, 0.7000000000000002, 1.0]], "color": "#00bbff", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.0, 0.7000000000000002, 1.0], [0.0, 0.666666666666667, 1.0]], "color": "#00b2ff", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.0, 0.666666666666667, 1.0], [0.0, 0.6333333333333337, 1.0]], "color": "#00aaff", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.0, 0.6333333333333337, 1.0], [0.0, 0.5999999999999996, 1.0]], "color": "#00a1ff", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.0, 0.5999999999999996, 1.0], [0.0, 0.5666666666666664, 1.0]], "color": "#0098ff", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.0, 0.5666666666666664, 1.0], [0.0, 0.5333333333333332, 1.0]], "color": "#0090ff", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.0, 0.5333333333333332, 1.0], [0.0, 0.5, 1.0]], "color": "#0087ff", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.0, 0.5, 1.0], [0.0, 0.4666666666666668, 1.0]], "color": "#007fff", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.0, 0.4666666666666668, 1.0], [0.0, 0.43333333333333357, 1.0]], "color": "#0077ff", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.0, 0.43333333333333357, 1.0], [0.0, 0.40000000000000036, 1.0]], "color": "#006eff", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.0, 0.40000000000000036, 1.0], [0.0, 0.36666666666666625, 1.0]], "color": "#0066ff", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.0, 0.36666666666666625, 1.0], [0.0, 0.33333333333333304, 1.0]], "color": "#005dff", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.0, 0.33333333333333304, 1.0], [0.0, 0.2999999999999998, 1.0]], "color": "#0054ff", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.0, 0.2999999999999998, 1.0], [0.0, 0.2666666666666666, 1.0]], "color": "#004cff", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.0, 0.2666666666666666, 1.0], [0.0, 0.2333333333333334, 1.0]], "color": "#0043ff", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.0, 0.2333333333333334, 1.0], [0.0, 0.20000000000000018, 1.0]], "color": "#003bff", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.0, 0.20000000000000018, 1.0], [0.0, 0.16666666666666696, 1.0]], "color": "#0033ff", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.0, 0.16666666666666696, 1.0], [0.0, 0.13333333333333375, 1.0]], "color": "#002aff", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.0, 0.13333333333333375, 1.0], [0.0, 0.09999999999999964, 1.0]], "color": "#0022ff", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.0, 0.09999999999999964, 1.0], [0.0, 0.06666666666666643, 1.0]], "color": "#0019ff", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.0, 0.06666666666666643, 1.0], [0.0, 0.033333333333333215, 1.0]], "color": "#0010ff", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.0, 0.033333333333333215, 1.0], [0.0, 0.0, 1.0]], "color": "#0008ff", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.0, 0.0, 1.0], [0.033333333333333215, 0.0, 1.0]], "color": "#0000ff", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.033333333333333215, 0.0, 1.0], [0.06666666666666643, 0.0, 1.0]], "color": "#0800ff", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.06666666666666643, 0.0, 1.0], [0.09999999999999964, 0.0, 1.0]], "color": "#1000ff", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.09999999999999964, 0.0, 1.0], [0.13333333333333286, 0.0, 1.0]], "color": "#1900ff", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.13333333333333286, 0.0, 1.0], [0.16666666666666607, 0.0, 1.0]], "color": "#2100ff", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.16666666666666607, 0.0, 1.0], [0.1999999999999993, 0.0, 1.0]], "color": "#2a00ff", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.1999999999999993, 0.0, 1.0], [0.2333333333333325, 0.0, 1.0]], "color": "#3200ff", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.2333333333333325, 0.0, 1.0], [0.2666666666666675, 0.0, 1.0]], "color": "#3b00ff", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.2666666666666675, 0.0, 1.0], [0.3000000000000007, 0.0, 1.0]], "color": "#4400ff", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.3000000000000007, 0.0, 1.0], [0.3333333333333339, 0.0, 1.0]], "color": "#4c00ff", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.3333333333333339, 0.0, 1.0], [0.36666666666666714, 0.0, 1.0]], "color": "#5500ff", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.36666666666666714, 0.0, 1.0], [0.40000000000000036, 0.0, 1.0]], "color": "#5d00ff", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.40000000000000036, 0.0, 1.0], [0.43333333333333357, 0.0, 1.0]], "color": "#6600ff", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.43333333333333357, 0.0, 1.0], [0.4666666666666668, 0.0, 1.0]], "color": "#6e00ff", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.4666666666666668, 0.0, 1.0], [0.5, 0.0, 1.0]], "color": "#7700ff", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.5, 0.0, 1.0], [0.5333333333333332, 0.0, 1.0]], "color": "#7f00ff", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.5333333333333332, 0.0, 1.0], [0.5666666666666664, 0.0, 1.0]], "color": "#8700ff", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.5666666666666664, 0.0, 1.0], [0.5999999999999996, 0.0, 1.0]], "color": "#9000ff", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.5999999999999996, 0.0, 1.0], [0.6333333333333329, 0.0, 1.0]], "color": "#9800ff", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.6333333333333329, 0.0, 1.0], [0.6666666666666661, 0.0, 1.0]], "color": "#a100ff", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.6666666666666661, 0.0, 1.0], [0.6999999999999993, 0.0, 1.0]], "color": "#a900ff", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.6999999999999993, 0.0, 1.0], [0.7333333333333325, 0.0, 1.0]], "color": "#b200ff", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.7333333333333325, 0.0, 1.0], [0.7666666666666675, 0.0, 1.0]], "color": "#ba00ff", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.7666666666666675, 0.0, 1.0], [0.8000000000000007, 0.0, 1.0]], "color": "#c300ff", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.8000000000000007, 0.0, 1.0], [0.8333333333333339, 0.0, 1.0]], "color": "#cc00ff", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.8333333333333339, 0.0, 1.0], [0.8666666666666671, 0.0, 1.0]], "color": "#d400ff", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.8666666666666671, 0.0, 1.0], [0.9000000000000004, 0.0, 1.0]], "color": "#dd00ff", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.9000000000000004, 0.0, 1.0], [0.9333333333333336, 0.0, 1.0]], "color": "#e500ff", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.9333333333333336, 0.0, 1.0], [0.9666666666666668, 0.0, 1.0]], "color": "#ee00ff", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.9666666666666668, 0.0, 1.0], [1.0, 0.0, 1.0]], "color": "#f600ff", "opacity": 1.0, "linewidth": 8.0}, {"points": [[1.0, 0.0, 1.0], [1.0, 0.0, 0.9666666666666668]], "color": "#ff00ff", "opacity": 1.0, "linewidth": 8.0}, {"points": [[1.0, 0.0, 0.9666666666666668], [1.0, 0.0, 0.9333333333333336]], "color": "#ff00f6", "opacity": 1.0, "linewidth": 8.0}, {"points": [[1.0, 0.0, 0.9333333333333336], [1.0, 0.0, 0.9000000000000004]], "color": "#ff00ee", "opacity": 1.0, "linewidth": 8.0}, {"points": [[1.0, 0.0, 0.9000000000000004], [1.0, 0.0, 0.8666666666666663]], "color": "#ff00e5", "opacity": 1.0, "linewidth": 8.0}, {"points": [[1.0, 0.0, 0.8666666666666663], [1.0, 0.0, 0.833333333333333]], "color": "#ff00dc", "opacity": 1.0, "linewidth": 8.0}, {"points": [[1.0, 0.0, 0.833333333333333], [1.0, 0.0, 0.7999999999999998]], "color": "#ff00d4", "opacity": 1.0, "linewidth": 8.0}, {"points": [[1.0, 0.0, 0.7999999999999998], [1.0, 0.0, 0.7666666666666666]], "color": "#ff00cb", "opacity": 1.0, "linewidth": 8.0}, {"points": [[1.0, 0.0, 0.7666666666666666], [1.0, 0.0, 0.7333333333333334]], "color": "#ff00c3", "opacity": 1.0, "linewidth": 8.0}, {"points": [[1.0, 0.0, 0.7333333333333334], [1.0, 0.0, 0.7000000000000002]], "color": "#ff00bb", "opacity": 1.0, "linewidth": 8.0}, {"points": [[1.0, 0.0, 0.7000000000000002], [1.0, 0.0, 0.666666666666667]], "color": "#ff00b2", "opacity": 1.0, "linewidth": 8.0}, {"points": [[1.0, 0.0, 0.666666666666667], [1.0, 0.0, 0.6333333333333337]], "color": "#ff00aa", "opacity": 1.0, "linewidth": 8.0}, {"points": [[1.0, 0.0, 0.6333333333333337], [1.0, 0.0, 0.5999999999999996]], "color": "#ff00a1", "opacity": 1.0, "linewidth": 8.0}, {"points": [[1.0, 0.0, 0.5999999999999996], [1.0, 0.0, 0.5666666666666664]], "color": "#ff0098", "opacity": 1.0, "linewidth": 8.0}, {"points": [[1.0, 0.0, 0.5666666666666664], [1.0, 0.0, 0.5333333333333332]], "color": "#ff0090", "opacity": 1.0, "linewidth": 8.0}, {"points": [[1.0, 0.0, 0.5333333333333332], [1.0, 0.0, 0.5]], "color": "#ff0087", "opacity": 1.0, "linewidth": 8.0}, {"points": [[1.0, 0.0, 0.5], [1.0, 0.0, 0.4666666666666668]], "color": "#ff007f", "opacity": 1.0, "linewidth": 8.0}, {"points": [[1.0, 0.0, 0.4666666666666668], [1.0, 0.0, 0.43333333333333357]], "color": "#ff0077", "opacity": 1.0, "linewidth": 8.0}, {"points": [[1.0, 0.0, 0.43333333333333357], [1.0, 0.0, 0.40000000000000036]], "color": "#ff006e", "opacity": 1.0, "linewidth": 8.0}, {"points": [[1.0, 0.0, 0.40000000000000036], [1.0, 0.0, 0.36666666666666625]], "color": "#ff0066", "opacity": 1.0, "linewidth": 8.0}, {"points": [[1.0, 0.0, 0.36666666666666625], [1.0, 0.0, 0.33333333333333304]], "color": "#ff005d", "opacity": 1.0, "linewidth": 8.0}, {"points": [[1.0, 0.0, 0.33333333333333304], [1.0, 0.0, 0.2999999999999998]], "color": "#ff0054", "opacity": 1.0, "linewidth": 8.0}, {"points": [[1.0, 0.0, 0.2999999999999998], [1.0, 0.0, 0.2666666666666666]], "color": "#ff004c", "opacity": 1.0, "linewidth": 8.0}, {"points": [[1.0, 0.0, 0.2666666666666666], [1.0, 0.0, 0.2333333333333334]], "color": "#ff0043", "opacity": 1.0, "linewidth": 8.0}, {"points": [[1.0, 0.0, 0.2333333333333334], [1.0, 0.0, 0.20000000000000018]], "color": "#ff003b", "opacity": 1.0, "linewidth": 8.0}, {"points": [[1.0, 0.0, 0.20000000000000018], [1.0, 0.0, 0.16666666666666696]], "color": "#ff0033", "opacity": 1.0, "linewidth": 8.0}, {"points": [[1.0, 0.0, 0.16666666666666696], [1.0, 0.0, 0.13333333333333375]], "color": "#ff002a", "opacity": 1.0, "linewidth": 8.0}, {"points": [[1.0, 0.0, 0.13333333333333375], [1.0, 0.0, 0.09999999999999964]], "color": "#ff0022", "opacity": 1.0, "linewidth": 8.0}, {"points": [[1.0, 0.0, 0.09999999999999964], [1.0, 0.0, 0.06666666666666643]], "color": "#ff0019", "opacity": 1.0, "linewidth": 8.0}, {"points": [[1.0, 0.0, 0.06666666666666643], [1.0, 0.0, 0.033333333333333215]], "color": "#ff0010", "opacity": 1.0, "linewidth": 8.0}, {"points": [[1.0, 0.0, 0.033333333333333215], [1.0, 0.0, 0.0]], "color": "#ff0008", "opacity": 1.0, "linewidth": 8.0}, {"points": [[1.0, 0.5, 0.5], [1.0, 0.5166666666666666, 0.5]], "color": "#ff7f7f", "opacity": 1.0, "linewidth": 8.0}, {"points": [[1.0, 0.5166666666666666, 0.5], [1.0, 0.5333333333333334, 0.5]], "color": "#ff837f", "opacity": 1.0, "linewidth": 8.0}, {"points": [[1.0, 0.5333333333333334, 0.5], [1.0, 0.55, 0.5]], "color": "#ff887f", "opacity": 1.0, "linewidth": 8.0}, {"points": [[1.0, 0.55, 0.5], [1.0, 0.5666666666666667, 0.5]], "color": "#ff8c7f", "opacity": 1.0, "linewidth": 8.0}, {"points": [[1.0, 0.5666666666666667, 0.5], [1.0, 0.5833333333333333, 0.5]], "color": "#ff907f", "opacity": 1.0, "linewidth": 8.0}, {"points": [[1.0, 0.5833333333333333, 0.5], [1.0, 0.6000000000000001, 0.5]], "color": "#ff947f", "opacity": 1.0, "linewidth": 8.0}, {"points": [[1.0, 0.6000000000000001, 0.5], [1.0, 0.6166666666666667, 0.5]], "color": "#ff997f", "opacity": 1.0, "linewidth": 8.0}, {"points": [[1.0, 0.6166666666666667, 0.5], [1.0, 0.6333333333333333, 0.5]], "color": "#ff9d7f", "opacity": 1.0, "linewidth": 8.0}, {"points": [[1.0, 0.6333333333333333, 0.5], [1.0, 0.6499999999999999, 0.5]], "color": "#ffa17f", "opacity": 1.0, "linewidth": 8.0}, {"points": [[1.0, 0.6499999999999999, 0.5], [1.0, 0.6666666666666667, 0.5]], "color": "#ffa57f", "opacity": 1.0, "linewidth": 8.0}, {"points": [[1.0, 0.6666666666666667, 0.5], [1.0, 0.6833333333333333, 0.5]], "color": "#ffaa7f", "opacity": 1.0, "linewidth": 8.0}, {"points": [[1.0, 0.6833333333333333, 0.5], [1.0, 0.7, 0.5]], "color": "#ffae7f", "opacity": 1.0, "linewidth": 8.0}, {"points": [[1.0, 0.7, 0.5], [1.0, 0.7166666666666666, 0.5]], "color": "#ffb27f", "opacity": 1.0, "linewidth": 8.0}, {"points": [[1.0, 0.7166666666666666, 0.5], [1.0, 0.7333333333333334, 0.5]], "color": "#ffb67f", "opacity": 1.0, "linewidth": 8.0}, {"points": [[1.0, 0.7333333333333334, 0.5], [1.0, 0.75, 0.5]], "color": "#ffbb7f", "opacity": 1.0, "linewidth": 8.0}, {"points": [[1.0, 0.75, 0.5], [1.0, 0.7666666666666666, 0.5]], "color": "#ffbf7f", "opacity": 1.0, "linewidth": 8.0}, {"points": [[1.0, 0.7666666666666666, 0.5], [1.0, 0.7833333333333334, 0.5]], "color": "#ffc37f", "opacity": 1.0, "linewidth": 8.0}, {"points": [[1.0, 0.7833333333333334, 0.5], [1.0, 0.8, 0.5]], "color": "#ffc77f", "opacity": 1.0, "linewidth": 8.0}, {"points": [[1.0, 0.8, 0.5], [1.0, 0.8166666666666667, 0.5]], "color": "#ffcc7f", "opacity": 1.0, "linewidth": 8.0}, {"points": [[1.0, 0.8166666666666667, 0.5], [1.0, 0.8333333333333333, 0.5]], "color": "#ffd07f", "opacity": 1.0, "linewidth": 8.0}, {"points": [[1.0, 0.8333333333333333, 0.5], [1.0, 0.8500000000000001, 0.5]], "color": "#ffd47f", "opacity": 1.0, "linewidth": 8.0}, {"points": [[1.0, 0.8500000000000001, 0.5], [1.0, 0.8666666666666667, 0.5]], "color": "#ffd87f", "opacity": 1.0, "linewidth": 8.0}, {"points": [[1.0, 0.8666666666666667, 0.5], [1.0, 0.8833333333333333, 0.5]], "color": "#ffdd7f", "opacity": 1.0, "linewidth": 8.0}, {"points": [[1.0, 0.8833333333333333, 0.5], [1.0, 0.8999999999999999, 0.5]], "color": "#ffe17f", "opacity": 1.0, "linewidth": 8.0}, {"points": [[1.0, 0.8999999999999999, 0.5], [1.0, 0.9166666666666667, 0.5]], "color": "#ffe57f", "opacity": 1.0, "linewidth": 8.0}, {"points": [[1.0, 0.9166666666666667, 0.5], [1.0, 0.9333333333333333, 0.5]], "color": "#ffe97f", "opacity": 1.0, "linewidth": 8.0}, {"points": [[1.0, 0.9333333333333333, 0.5], [1.0, 0.95, 0.5]], "color": "#ffee7f", "opacity": 1.0, "linewidth": 8.0}, {"points": [[1.0, 0.95, 0.5], [1.0, 0.9666666666666666, 0.5]], "color": "#fff27f", "opacity": 1.0, "linewidth": 8.0}, {"points": [[1.0, 0.9666666666666666, 0.5], [1.0, 0.9833333333333334, 0.5]], "color": "#fff67f", "opacity": 1.0, "linewidth": 8.0}, {"points": [[1.0, 0.9833333333333334, 0.5], [1.0, 1.0, 0.5]], "color": "#fffa7f", "opacity": 1.0, "linewidth": 8.0}, {"points": [[1.0, 1.0, 0.5], [0.9833333333333334, 1.0, 0.5]], "color": "#ffff7f", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.9833333333333334, 1.0, 0.5], [0.9666666666666668, 1.0, 0.5]], "color": "#faff7f", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.9666666666666668, 1.0, 0.5], [0.9500000000000002, 1.0, 0.5]], "color": "#f6ff7f", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.9500000000000002, 1.0, 0.5], [0.9333333333333331, 1.0, 0.5]], "color": "#f2ff7f", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.9333333333333331, 1.0, 0.5], [0.9166666666666665, 1.0, 0.5]], "color": "#edff7f", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.9166666666666665, 1.0, 0.5], [0.8999999999999999, 1.0, 0.5]], "color": "#e9ff7f", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.8999999999999999, 1.0, 0.5], [0.8833333333333333, 1.0, 0.5]], "color": "#e5ff7f", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.8833333333333333, 1.0, 0.5], [0.8666666666666667, 1.0, 0.5]], "color": "#e1ff7f", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.8666666666666667, 1.0, 0.5], [0.8500000000000001, 1.0, 0.5]], "color": "#ddff7f", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.8500000000000001, 1.0, 0.5], [0.8333333333333335, 1.0, 0.5]], "color": "#d8ff7f", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.8333333333333335, 1.0, 0.5], [0.8166666666666669, 1.0, 0.5]], "color": "#d4ff7f", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.8166666666666669, 1.0, 0.5], [0.7999999999999998, 1.0, 0.5]], "color": "#d0ff7f", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.7999999999999998, 1.0, 0.5], [0.7833333333333332, 1.0, 0.5]], "color": "#cbff7f", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.7833333333333332, 1.0, 0.5], [0.7666666666666666, 1.0, 0.5]], "color": "#c7ff7f", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.7666666666666666, 1.0, 0.5], [0.75, 1.0, 0.5]], "color": "#c3ff7f", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.75, 1.0, 0.5], [0.7333333333333334, 1.0, 0.5]], "color": "#bfff7f", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.7333333333333334, 1.0, 0.5], [0.7166666666666668, 1.0, 0.5]], "color": "#bbff7f", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.7166666666666668, 1.0, 0.5], [0.7000000000000002, 1.0, 0.5]], "color": "#b6ff7f", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.7000000000000002, 1.0, 0.5], [0.6833333333333331, 1.0, 0.5]], "color": "#b2ff7f", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.6833333333333331, 1.0, 0.5], [0.6666666666666665, 1.0, 0.5]], "color": "#aeff7f", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.6666666666666665, 1.0, 0.5], [0.6499999999999999, 1.0, 0.5]], "color": "#a9ff7f", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.6499999999999999, 1.0, 0.5], [0.6333333333333333, 1.0, 0.5]], "color": "#a5ff7f", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.6333333333333333, 1.0, 0.5], [0.6166666666666667, 1.0, 0.5]], "color": "#a1ff7f", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.6166666666666667, 1.0, 0.5], [0.6000000000000001, 1.0, 0.5]], "color": "#9dff7f", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.6000000000000001, 1.0, 0.5], [0.5833333333333335, 1.0, 0.5]], "color": "#99ff7f", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.5833333333333335, 1.0, 0.5], [0.5666666666666669, 1.0, 0.5]], "color": "#94ff7f", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.5666666666666669, 1.0, 0.5], [0.5499999999999998, 1.0, 0.5]], "color": "#90ff7f", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.5499999999999998, 1.0, 0.5], [0.5333333333333332, 1.0, 0.5]], "color": "#8cff7f", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.5333333333333332, 1.0, 0.5], [0.5166666666666666, 1.0, 0.5]], "color": "#87ff7f", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.5166666666666666, 1.0, 0.5], [0.5, 1.0, 0.5]], "color": "#83ff7f", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.5, 1.0, 0.5], [0.5, 1.0, 0.5166666666666666]], "color": "#7fff7f", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.5, 1.0, 0.5166666666666666], [0.5, 1.0, 0.5333333333333334]], "color": "#7fff83", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.5, 1.0, 0.5333333333333334], [0.5, 1.0, 0.55]], "color": "#7fff88", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.5, 1.0, 0.55], [0.5, 1.0, 0.5666666666666667]], "color": "#7fff8c", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.5, 1.0, 0.5666666666666667], [0.5, 1.0, 0.5833333333333333]], "color": "#7fff90", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.5, 1.0, 0.5833333333333333], [0.5, 1.0, 0.6000000000000001]], "color": "#7fff94", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.5, 1.0, 0.6000000000000001], [0.5, 1.0, 0.6166666666666667]], "color": "#7fff99", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.5, 1.0, 0.6166666666666667], [0.5, 1.0, 0.6333333333333333]], "color": "#7fff9d", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.5, 1.0, 0.6333333333333333], [0.5, 1.0, 0.6499999999999999]], "color": "#7fffa1", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.5, 1.0, 0.6499999999999999], [0.5, 1.0, 0.6666666666666667]], "color": "#7fffa5", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.5, 1.0, 0.6666666666666667], [0.5, 1.0, 0.6833333333333333]], "color": "#7fffaa", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.5, 1.0, 0.6833333333333333], [0.5, 1.0, 0.7]], "color": "#7fffae", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.5, 1.0, 0.7], [0.5, 1.0, 0.7166666666666666]], "color": "#7fffb2", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.5, 1.0, 0.7166666666666666], [0.5, 1.0, 0.7333333333333334]], "color": "#7fffb6", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.5, 1.0, 0.7333333333333334], [0.5, 1.0, 0.75]], "color": "#7fffbb", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.5, 1.0, 0.75], [0.5, 1.0, 0.7666666666666666]], "color": "#7fffbf", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.5, 1.0, 0.7666666666666666], [0.5, 1.0, 0.7833333333333334]], "color": "#7fffc3", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.5, 1.0, 0.7833333333333334], [0.5, 1.0, 0.8]], "color": "#7fffc7", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.5, 1.0, 0.8], [0.5, 1.0, 0.8166666666666667]], "color": "#7fffcc", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.5, 1.0, 0.8166666666666667], [0.5, 1.0, 0.8333333333333333]], "color": "#7fffd0", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.5, 1.0, 0.8333333333333333], [0.5, 1.0, 0.8500000000000001]], "color": "#7fffd4", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.5, 1.0, 0.8500000000000001], [0.5, 1.0, 0.8666666666666667]], "color": "#7fffd8", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.5, 1.0, 0.8666666666666667], [0.5, 1.0, 0.8833333333333333]], "color": "#7fffdd", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.5, 1.0, 0.8833333333333333], [0.5, 1.0, 0.8999999999999999]], "color": "#7fffe1", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.5, 1.0, 0.8999999999999999], [0.5, 1.0, 0.9166666666666667]], "color": "#7fffe5", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.5, 1.0, 0.9166666666666667], [0.5, 1.0, 0.9333333333333333]], "color": "#7fffe9", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.5, 1.0, 0.9333333333333333], [0.5, 1.0, 0.95]], "color": "#7fffee", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.5, 1.0, 0.95], [0.5, 1.0, 0.9666666666666666]], "color": "#7ffff2", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.5, 1.0, 0.9666666666666666], [0.5, 1.0, 0.9833333333333334]], "color": "#7ffff6", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.5, 1.0, 0.9833333333333334], [0.5, 1.0, 1.0]], "color": "#7ffffa", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.5, 1.0, 1.0], [0.5, 0.9833333333333334, 1.0]], "color": "#7fffff", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.5, 0.9833333333333334, 1.0], [0.5, 0.9666666666666668, 1.0]], "color": "#7ffaff", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.5, 0.9666666666666668, 1.0], [0.5, 0.9500000000000002, 1.0]], "color": "#7ff6ff", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.5, 0.9500000000000002, 1.0], [0.5, 0.9333333333333331, 1.0]], "color": "#7ff2ff", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.5, 0.9333333333333331, 1.0], [0.5, 0.9166666666666665, 1.0]], "color": "#7fedff", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.5, 0.9166666666666665, 1.0], [0.5, 0.8999999999999999, 1.0]], "color": "#7fe9ff", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.5, 0.8999999999999999, 1.0], [0.5, 0.8833333333333333, 1.0]], "color": "#7fe5ff", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.5, 0.8833333333333333, 1.0], [0.5, 0.8666666666666667, 1.0]], "color": "#7fe1ff", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.5, 0.8666666666666667, 1.0], [0.5, 0.8500000000000001, 1.0]], "color": "#7fddff", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.5, 0.8500000000000001, 1.0], [0.5, 0.8333333333333335, 1.0]], "color": "#7fd8ff", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.5, 0.8333333333333335, 1.0], [0.5, 0.8166666666666669, 1.0]], "color": "#7fd4ff", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.5, 0.8166666666666669, 1.0], [0.5, 0.7999999999999998, 1.0]], "color": "#7fd0ff", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.5, 0.7999999999999998, 1.0], [0.5, 0.7833333333333332, 1.0]], "color": "#7fcbff", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.5, 0.7833333333333332, 1.0], [0.5, 0.7666666666666666, 1.0]], "color": "#7fc7ff", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.5, 0.7666666666666666, 1.0], [0.5, 0.75, 1.0]], "color": "#7fc3ff", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.5, 0.75, 1.0], [0.5, 0.7333333333333334, 1.0]], "color": "#7fbfff", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.5, 0.7333333333333334, 1.0], [0.5, 0.7166666666666668, 1.0]], "color": "#7fbbff", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.5, 0.7166666666666668, 1.0], [0.5, 0.7000000000000002, 1.0]], "color": "#7fb6ff", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.5, 0.7000000000000002, 1.0], [0.5, 0.6833333333333331, 1.0]], "color": "#7fb2ff", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.5, 0.6833333333333331, 1.0], [0.5, 0.6666666666666665, 1.0]], "color": "#7faeff", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.5, 0.6666666666666665, 1.0], [0.5, 0.6499999999999999, 1.0]], "color": "#7fa9ff", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.5, 0.6499999999999999, 1.0], [0.5, 0.6333333333333333, 1.0]], "color": "#7fa5ff", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.5, 0.6333333333333333, 1.0], [0.5, 0.6166666666666667, 1.0]], "color": "#7fa1ff", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.5, 0.6166666666666667, 1.0], [0.5, 0.6000000000000001, 1.0]], "color": "#7f9dff", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.5, 0.6000000000000001, 1.0], [0.5, 0.5833333333333335, 1.0]], "color": "#7f99ff", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.5, 0.5833333333333335, 1.0], [0.5, 0.5666666666666669, 1.0]], "color": "#7f94ff", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.5, 0.5666666666666669, 1.0], [0.5, 0.5499999999999998, 1.0]], "color": "#7f90ff", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.5, 0.5499999999999998, 1.0], [0.5, 0.5333333333333332, 1.0]], "color": "#7f8cff", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.5, 0.5333333333333332, 1.0], [0.5, 0.5166666666666666, 1.0]], "color": "#7f87ff", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.5, 0.5166666666666666, 1.0], [0.5, 0.5, 1.0]], "color": "#7f83ff", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.5, 0.5, 1.0], [0.5166666666666666, 0.5, 1.0]], "color": "#7f7fff", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.5166666666666666, 0.5, 1.0], [0.5333333333333332, 0.5, 1.0]], "color": "#837fff", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.5333333333333332, 0.5, 1.0], [0.5499999999999998, 0.5, 1.0]], "color": "#877fff", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.5499999999999998, 0.5, 1.0], [0.5666666666666664, 0.5, 1.0]], "color": "#8c7fff", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.5666666666666664, 0.5, 1.0], [0.583333333333333, 0.5, 1.0]], "color": "#907fff", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.583333333333333, 0.5, 1.0], [0.5999999999999996, 0.5, 1.0]], "color": "#947fff", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.5999999999999996, 0.5, 1.0], [0.6166666666666663, 0.5, 1.0]], "color": "#987fff", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.6166666666666663, 0.5, 1.0], [0.6333333333333337, 0.5, 1.0]], "color": "#9d7fff", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.6333333333333337, 0.5, 1.0], [0.6500000000000004, 0.5, 1.0]], "color": "#a17fff", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.6500000000000004, 0.5, 1.0], [0.666666666666667, 0.5, 1.0]], "color": "#a57fff", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.666666666666667, 0.5, 1.0], [0.6833333333333336, 0.5, 1.0]], "color": "#aa7fff", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.6833333333333336, 0.5, 1.0], [0.7000000000000002, 0.5, 1.0]], "color": "#ae7fff", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.7000000000000002, 0.5, 1.0], [0.7166666666666668, 0.5, 1.0]], "color": "#b27fff", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.7166666666666668, 0.5, 1.0], [0.7333333333333334, 0.5, 1.0]], "color": "#b67fff", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.7333333333333334, 0.5, 1.0], [0.75, 0.5, 1.0]], "color": "#bb7fff", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.75, 0.5, 1.0], [0.7666666666666666, 0.5, 1.0]], "color": "#bf7fff", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.7666666666666666, 0.5, 1.0], [0.7833333333333332, 0.5, 1.0]], "color": "#c37fff", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.7833333333333332, 0.5, 1.0], [0.7999999999999998, 0.5, 1.0]], "color": "#c77fff", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.7999999999999998, 0.5, 1.0], [0.8166666666666664, 0.5, 1.0]], "color": "#cb7fff", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.8166666666666664, 0.5, 1.0], [0.833333333333333, 0.5, 1.0]], "color": "#d07fff", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.833333333333333, 0.5, 1.0], [0.8499999999999996, 0.5, 1.0]], "color": "#d47fff", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.8499999999999996, 0.5, 1.0], [0.8666666666666663, 0.5, 1.0]], "color": "#d87fff", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.8666666666666663, 0.5, 1.0], [0.8833333333333337, 0.5, 1.0]], "color": "#dc7fff", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.8833333333333337, 0.5, 1.0], [0.9000000000000004, 0.5, 1.0]], "color": "#e17fff", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.9000000000000004, 0.5, 1.0], [0.916666666666667, 0.5, 1.0]], "color": "#e57fff", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.916666666666667, 0.5, 1.0], [0.9333333333333336, 0.5, 1.0]], "color": "#e97fff", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.9333333333333336, 0.5, 1.0], [0.9500000000000002, 0.5, 1.0]], "color": "#ee7fff", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.9500000000000002, 0.5, 1.0], [0.9666666666666668, 0.5, 1.0]], "color": "#f27fff", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.9666666666666668, 0.5, 1.0], [0.9833333333333334, 0.5, 1.0]], "color": "#f67fff", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.9833333333333334, 0.5, 1.0], [1.0, 0.5, 1.0]], "color": "#fa7fff", "opacity": 1.0, "linewidth": 8.0}, {"points": [[1.0, 0.5, 1.0], [1.0, 0.5, 0.9833333333333334]], "color": "#ff7fff", "opacity": 1.0, "linewidth": 8.0}, {"points": [[1.0, 0.5, 0.9833333333333334], [1.0, 0.5, 0.9666666666666668]], "color": "#ff7ffa", "opacity": 1.0, "linewidth": 8.0}, {"points": [[1.0, 0.5, 0.9666666666666668], [1.0, 0.5, 0.9500000000000002]], "color": "#ff7ff6", "opacity": 1.0, "linewidth": 8.0}, {"points": [[1.0, 0.5, 0.9500000000000002], [1.0, 0.5, 0.9333333333333331]], "color": "#ff7ff2", "opacity": 1.0, "linewidth": 8.0}, {"points": [[1.0, 0.5, 0.9333333333333331], [1.0, 0.5, 0.9166666666666665]], "color": "#ff7fed", "opacity": 1.0, "linewidth": 8.0}, {"points": [[1.0, 0.5, 0.9166666666666665], [1.0, 0.5, 0.8999999999999999]], "color": "#ff7fe9", "opacity": 1.0, "linewidth": 8.0}, {"points": [[1.0, 0.5, 0.8999999999999999], [1.0, 0.5, 0.8833333333333333]], "color": "#ff7fe5", "opacity": 1.0, "linewidth": 8.0}, {"points": [[1.0, 0.5, 0.8833333333333333], [1.0, 0.5, 0.8666666666666667]], "color": "#ff7fe1", "opacity": 1.0, "linewidth": 8.0}, {"points": [[1.0, 0.5, 0.8666666666666667], [1.0, 0.5, 0.8500000000000001]], "color": "#ff7fdd", "opacity": 1.0, "linewidth": 8.0}, {"points": [[1.0, 0.5, 0.8500000000000001], [1.0, 0.5, 0.8333333333333335]], "color": "#ff7fd8", "opacity": 1.0, "linewidth": 8.0}, {"points": [[1.0, 0.5, 0.8333333333333335], [1.0, 0.5, 0.8166666666666669]], "color": "#ff7fd4", "opacity": 1.0, "linewidth": 8.0}, {"points": [[1.0, 0.5, 0.8166666666666669], [1.0, 0.5, 0.7999999999999998]], "color": "#ff7fd0", "opacity": 1.0, "linewidth": 8.0}, {"points": [[1.0, 0.5, 0.7999999999999998], [1.0, 0.5, 0.7833333333333332]], "color": "#ff7fcb", "opacity": 1.0, "linewidth": 8.0}, {"points": [[1.0, 0.5, 0.7833333333333332], [1.0, 0.5, 0.7666666666666666]], "color": "#ff7fc7", "opacity": 1.0, "linewidth": 8.0}, {"points": [[1.0, 0.5, 0.7666666666666666], [1.0, 0.5, 0.75]], "color": "#ff7fc3", "opacity": 1.0, "linewidth": 8.0}, {"points": [[1.0, 0.5, 0.75], [1.0, 0.5, 0.7333333333333334]], "color": "#ff7fbf", "opacity": 1.0, "linewidth": 8.0}, {"points": [[1.0, 0.5, 0.7333333333333334], [1.0, 0.5, 0.7166666666666668]], "color": "#ff7fbb", "opacity": 1.0, "linewidth": 8.0}, {"points": [[1.0, 0.5, 0.7166666666666668], [1.0, 0.5, 0.7000000000000002]], "color": "#ff7fb6", "opacity": 1.0, "linewidth": 8.0}, {"points": [[1.0, 0.5, 0.7000000000000002], [1.0, 0.5, 0.6833333333333331]], "color": "#ff7fb2", "opacity": 1.0, "linewidth": 8.0}, {"points": [[1.0, 0.5, 0.6833333333333331], [1.0, 0.5, 0.6666666666666665]], "color": "#ff7fae", "opacity": 1.0, "linewidth": 8.0}, {"points": [[1.0, 0.5, 0.6666666666666665], [1.0, 0.5, 0.6499999999999999]], "color": "#ff7fa9", "opacity": 1.0, "linewidth": 8.0}, {"points": [[1.0, 0.5, 0.6499999999999999], [1.0, 0.5, 0.6333333333333333]], "color": "#ff7fa5", "opacity": 1.0, "linewidth": 8.0}, {"points": [[1.0, 0.5, 0.6333333333333333], [1.0, 0.5, 0.6166666666666667]], "color": "#ff7fa1", "opacity": 1.0, "linewidth": 8.0}, {"points": [[1.0, 0.5, 0.6166666666666667], [1.0, 0.5, 0.6000000000000001]], "color": "#ff7f9d", "opacity": 1.0, "linewidth": 8.0}, {"points": [[1.0, 0.5, 0.6000000000000001], [1.0, 0.5, 0.5833333333333335]], "color": "#ff7f99", "opacity": 1.0, "linewidth": 8.0}, {"points": [[1.0, 0.5, 0.5833333333333335], [1.0, 0.5, 0.5666666666666669]], "color": "#ff7f94", "opacity": 1.0, "linewidth": 8.0}, {"points": [[1.0, 0.5, 0.5666666666666669], [1.0, 0.5, 0.5499999999999998]], "color": "#ff7f90", "opacity": 1.0, "linewidth": 8.0}, {"points": [[1.0, 0.5, 0.5499999999999998], [1.0, 0.5, 0.5333333333333332]], "color": "#ff7f8c", "opacity": 1.0, "linewidth": 8.0}, {"points": [[1.0, 0.5, 0.5333333333333332], [1.0, 0.5, 0.5166666666666666]], "color": "#ff7f87", "opacity": 1.0, "linewidth": 8.0}, {"points": [[1.0, 0.5, 0.5166666666666666], [1.0, 0.5, 0.5]], "color": "#ff7f83", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.5, 0.0, 0.0], [0.5, 0.016666666666666607, 0.0]], "color": "#7f0000", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.5, 0.016666666666666607, 0.0], [0.5, 0.03333333333333344, 0.0]], "color": "#7f0400", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.5, 0.03333333333333344, 0.0], [0.5, 0.050000000000000044, 0.0]], "color": "#7f0800", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.5, 0.050000000000000044, 0.0], [0.5, 0.06666666666666665, 0.0]], "color": "#7f0c00", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.5, 0.06666666666666665, 0.0], [0.5, 0.08333333333333326, 0.0]], "color": "#7f1000", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.5, 0.08333333333333326, 0.0], [0.5, 0.10000000000000009, 0.0]], "color": "#7f1500", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.5, 0.10000000000000009, 0.0], [0.5, 0.1166666666666667, 0.0]], "color": "#7f1900", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.5, 0.1166666666666667, 0.0], [0.5, 0.1333333333333333, 0.0]], "color": "#7f1d00", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.5, 0.1333333333333333, 0.0], [0.5, 0.1499999999999999, 0.0]], "color": "#7f2100", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.5, 0.1499999999999999, 0.0], [0.5, 0.16666666666666674, 0.0]], "color": "#7f2600", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.5, 0.16666666666666674, 0.0], [0.5, 0.18333333333333335, 0.0]], "color": "#7f2a00", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.5, 0.18333333333333335, 0.0], [0.5, 0.19999999999999996, 0.0]], "color": "#7f2e00", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.5, 0.19999999999999996, 0.0], [0.5, 0.21666666666666656, 0.0]], "color": "#7f3200", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.5, 0.21666666666666656, 0.0], [0.5, 0.2333333333333334, 0.0]], "color": "#7f3700", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.5, 0.2333333333333334, 0.0], [0.5, 0.25, 0.0]], "color": "#7f3b00", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.5, 0.25, 0.0], [0.5, 0.2666666666666666, 0.0]], "color": "#7f3f00", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.5, 0.2666666666666666, 0.0], [0.5, 0.28333333333333344, 0.0]], "color": "#7f4300", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.5, 0.28333333333333344, 0.0], [0.5, 0.30000000000000004, 0.0]], "color": "#7f4800", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.5, 0.30000000000000004, 0.0], [0.5, 0.31666666666666665, 0.0]], "color": "#7f4c00", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.5, 0.31666666666666665, 0.0], [0.5, 0.33333333333333326, 0.0]], "color": "#7f5000", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.5, 0.33333333333333326, 0.0], [0.5, 0.3500000000000001, 0.0]], "color": "#7f5400", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.5, 0.3500000000000001, 0.0], [0.5, 0.3666666666666667, 0.0]], "color": "#7f5900", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.5, 0.3666666666666667, 0.0], [0.5, 0.3833333333333333, 0.0]], "color": "#7f5d00", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.5, 0.3833333333333333, 0.0], [0.5, 0.3999999999999999, 0.0]], "color": "#7f6100", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.5, 0.3999999999999999, 0.0], [0.5, 0.41666666666666674, 0.0]], "color": "#7f6500", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.5, 0.41666666666666674, 0.0], [0.5, 0.43333333333333335, 0.0]], "color": "#7f6a00", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.5, 0.43333333333333335, 0.0], [0.5, 0.44999999999999996, 0.0]], "color": "#7f6e00", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.5, 0.44999999999999996, 0.0], [0.5, 0.46666666666666656, 0.0]], "color": "#7f7200", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.5, 0.46666666666666656, 0.0], [0.5, 0.4833333333333334, 0.0]], "color": "#7f7600", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.5, 0.4833333333333334, 0.0], [0.5, 0.5, 0.0]], "color": "#7f7b00", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.5, 0.5, 0.0], [0.4833333333333334, 0.5, 0.0]], "color": "#7f7f00", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.4833333333333334, 0.5, 0.0], [0.4666666666666668, 0.5, 0.0]], "color": "#7b7f00", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.4666666666666668, 0.5, 0.0], [0.4500000000000002, 0.5, 0.0]], "color": "#777f00", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.4500000000000002, 0.5, 0.0], [0.4333333333333331, 0.5, 0.0]], "color": "#727f00", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.4333333333333331, 0.5, 0.0], [0.4166666666666665, 0.5, 0.0]], "color": "#6e7f00", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.4166666666666665, 0.5, 0.0], [0.3999999999999999, 0.5, 0.0]], "color": "#6a7f00", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.3999999999999999, 0.5, 0.0], [0.3833333333333333, 0.5, 0.0]], "color": "#657f00", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.3833333333333333, 0.5, 0.0], [0.3666666666666667, 0.5, 0.0]], "color": "#617f00", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.3666666666666667, 0.5, 0.0], [0.3500000000000001, 0.5, 0.0]], "color": "#5d7f00", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.3500000000000001, 0.5, 0.0], [0.3333333333333335, 0.5, 0.0]], "color": "#597f00", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.3333333333333335, 0.5, 0.0], [0.3166666666666669, 0.5, 0.0]], "color": "#557f00", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.3166666666666669, 0.5, 0.0], [0.2999999999999998, 0.5, 0.0]], "color": "#507f00", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.2999999999999998, 0.5, 0.0], [0.2833333333333332, 0.5, 0.0]], "color": "#4c7f00", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.2833333333333332, 0.5, 0.0], [0.2666666666666666, 0.5, 0.0]], "color": "#487f00", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.2666666666666666, 0.5, 0.0], [0.25, 0.5, 0.0]], "color": "#437f00", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.25, 0.5, 0.0], [0.2333333333333334, 0.5, 0.0]], "color": "#3f7f00", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.2333333333333334, 0.5, 0.0], [0.21666666666666679, 0.5, 0.0]], "color": "#3b7f00", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.21666666666666679, 0.5, 0.0], [0.20000000000000018, 0.5, 0.0]], "color": "#377f00", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.20000000000000018, 0.5, 0.0], [0.18333333333333313, 0.5, 0.0]], "color": "#337f00", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.18333333333333313, 0.5, 0.0], [0.16666666666666652, 0.5, 0.0]], "color": "#2e7f00", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.16666666666666652, 0.5, 0.0], [0.1499999999999999, 0.5, 0.0]], "color": "#2a7f00", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.1499999999999999, 0.5, 0.0], [0.1333333333333333, 0.5, 0.0]], "color": "#267f00", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.1333333333333333, 0.5, 0.0], [0.1166666666666667, 0.5, 0.0]], "color": "#217f00", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.1166666666666667, 0.5, 0.0], [0.10000000000000009, 0.5, 0.0]], "color": "#1d7f00", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.10000000000000009, 0.5, 0.0], [0.08333333333333348, 0.5, 0.0]], "color": "#197f00", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.08333333333333348, 0.5, 0.0], [0.06666666666666687, 0.5, 0.0]], "color": "#157f00", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.06666666666666687, 0.5, 0.0], [0.04999999999999982, 0.5, 0.0]], "color": "#117f00", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.04999999999999982, 0.5, 0.0], [0.033333333333333215, 0.5, 0.0]], "color": "#0c7f00", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.033333333333333215, 0.5, 0.0], [0.016666666666666607, 0.5, 0.0]], "color": "#087f00", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.016666666666666607, 0.5, 0.0], [0.0, 0.5, 0.0]], "color": "#047f00", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.0, 0.5, 0.0], [0.0, 0.5, 0.016666666666666607]], "color": "#007f00", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.0, 0.5, 0.016666666666666607], [0.0, 0.5, 0.03333333333333344]], "color": "#007f04", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.0, 0.5, 0.03333333333333344], [0.0, 0.5, 0.050000000000000044]], "color": "#007f08", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.0, 0.5, 0.050000000000000044], [0.0, 0.5, 0.06666666666666665]], "color": "#007f0c", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.0, 0.5, 0.06666666666666665], [0.0, 0.5, 0.08333333333333326]], "color": "#007f10", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.0, 0.5, 0.08333333333333326], [0.0, 0.5, 0.10000000000000009]], "color": "#007f15", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.0, 0.5, 0.10000000000000009], [0.0, 0.5, 0.1166666666666667]], "color": "#007f19", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.0, 0.5, 0.1166666666666667], [0.0, 0.5, 0.1333333333333333]], "color": "#007f1d", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.0, 0.5, 0.1333333333333333], [0.0, 0.5, 0.1499999999999999]], "color": "#007f21", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.0, 0.5, 0.1499999999999999], [0.0, 0.5, 0.16666666666666674]], "color": "#007f26", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.0, 0.5, 0.16666666666666674], [0.0, 0.5, 0.18333333333333335]], "color": "#007f2a", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.0, 0.5, 0.18333333333333335], [0.0, 0.5, 0.19999999999999996]], "color": "#007f2e", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.0, 0.5, 0.19999999999999996], [0.0, 0.5, 0.21666666666666656]], "color": "#007f32", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.0, 0.5, 0.21666666666666656], [0.0, 0.5, 0.2333333333333334]], "color": "#007f37", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.0, 0.5, 0.2333333333333334], [0.0, 0.5, 0.25]], "color": "#007f3b", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.0, 0.5, 0.25], [0.0, 0.5, 0.2666666666666666]], "color": "#007f3f", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.0, 0.5, 0.2666666666666666], [0.0, 0.5, 0.28333333333333344]], "color": "#007f43", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.0, 0.5, 0.28333333333333344], [0.0, 0.5, 0.30000000000000004]], "color": "#007f48", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.0, 0.5, 0.30000000000000004], [0.0, 0.5, 0.31666666666666665]], "color": "#007f4c", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.0, 0.5, 0.31666666666666665], [0.0, 0.5, 0.33333333333333326]], "color": "#007f50", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.0, 0.5, 0.33333333333333326], [0.0, 0.5, 0.3500000000000001]], "color": "#007f54", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.0, 0.5, 0.3500000000000001], [0.0, 0.5, 0.3666666666666667]], "color": "#007f59", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.0, 0.5, 0.3666666666666667], [0.0, 0.5, 0.3833333333333333]], "color": "#007f5d", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.0, 0.5, 0.3833333333333333], [0.0, 0.5, 0.3999999999999999]], "color": "#007f61", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.0, 0.5, 0.3999999999999999], [0.0, 0.5, 0.41666666666666674]], "color": "#007f65", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.0, 0.5, 0.41666666666666674], [0.0, 0.5, 0.43333333333333335]], "color": "#007f6a", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.0, 0.5, 0.43333333333333335], [0.0, 0.5, 0.44999999999999996]], "color": "#007f6e", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.0, 0.5, 0.44999999999999996], [0.0, 0.5, 0.46666666666666656]], "color": "#007f72", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.0, 0.5, 0.46666666666666656], [0.0, 0.5, 0.4833333333333334]], "color": "#007f76", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.0, 0.5, 0.4833333333333334], [0.0, 0.5, 0.5]], "color": "#007f7b", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.0, 0.5, 0.5], [0.0, 0.4833333333333334, 0.5]], "color": "#007f7f", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.0, 0.4833333333333334, 0.5], [0.0, 0.4666666666666668, 0.5]], "color": "#007b7f", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.0, 0.4666666666666668, 0.5], [0.0, 0.4500000000000002, 0.5]], "color": "#00777f", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.0, 0.4500000000000002, 0.5], [0.0, 0.4333333333333331, 0.5]], "color": "#00727f", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.0, 0.4333333333333331, 0.5], [0.0, 0.4166666666666665, 0.5]], "color": "#006e7f", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.0, 0.4166666666666665, 0.5], [0.0, 0.3999999999999999, 0.5]], "color": "#006a7f", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.0, 0.3999999999999999, 0.5], [0.0, 0.3833333333333333, 0.5]], "color": "#00657f", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.0, 0.3833333333333333, 0.5], [0.0, 0.3666666666666667, 0.5]], "color": "#00617f", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.0, 0.3666666666666667, 0.5], [0.0, 0.3500000000000001, 0.5]], "color": "#005d7f", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.0, 0.3500000000000001, 0.5], [0.0, 0.3333333333333335, 0.5]], "color": "#00597f", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.0, 0.3333333333333335, 0.5], [0.0, 0.3166666666666669, 0.5]], "color": "#00557f", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.0, 0.3166666666666669, 0.5], [0.0, 0.2999999999999998, 0.5]], "color": "#00507f", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.0, 0.2999999999999998, 0.5], [0.0, 0.2833333333333332, 0.5]], "color": "#004c7f", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.0, 0.2833333333333332, 0.5], [0.0, 0.2666666666666666, 0.5]], "color": "#00487f", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.0, 0.2666666666666666, 0.5], [0.0, 0.25, 0.5]], "color": "#00437f", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.0, 0.25, 0.5], [0.0, 0.2333333333333334, 0.5]], "color": "#003f7f", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.0, 0.2333333333333334, 0.5], [0.0, 0.21666666666666679, 0.5]], "color": "#003b7f", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.0, 0.21666666666666679, 0.5], [0.0, 0.20000000000000018, 0.5]], "color": "#00377f", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.0, 0.20000000000000018, 0.5], [0.0, 0.18333333333333313, 0.5]], "color": "#00337f", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.0, 0.18333333333333313, 0.5], [0.0, 0.16666666666666652, 0.5]], "color": "#002e7f", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.0, 0.16666666666666652, 0.5], [0.0, 0.1499999999999999, 0.5]], "color": "#002a7f", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.0, 0.1499999999999999, 0.5], [0.0, 0.1333333333333333, 0.5]], "color": "#00267f", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.0, 0.1333333333333333, 0.5], [0.0, 0.1166666666666667, 0.5]], "color": "#00217f", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.0, 0.1166666666666667, 0.5], [0.0, 0.10000000000000009, 0.5]], "color": "#001d7f", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.0, 0.10000000000000009, 0.5], [0.0, 0.08333333333333348, 0.5]], "color": "#00197f", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.0, 0.08333333333333348, 0.5], [0.0, 0.06666666666666687, 0.5]], "color": "#00157f", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.0, 0.06666666666666687, 0.5], [0.0, 0.04999999999999982, 0.5]], "color": "#00117f", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.0, 0.04999999999999982, 0.5], [0.0, 0.033333333333333215, 0.5]], "color": "#000c7f", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.0, 0.033333333333333215, 0.5], [0.0, 0.016666666666666607, 0.5]], "color": "#00087f", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.0, 0.016666666666666607, 0.5], [0.0, 0.0, 0.5]], "color": "#00047f", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.0, 0.0, 0.5], [0.016666666666666607, 0.0, 0.5]], "color": "#00007f", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.016666666666666607, 0.0, 0.5], [0.033333333333333215, 0.0, 0.5]], "color": "#04007f", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.033333333333333215, 0.0, 0.5], [0.04999999999999982, 0.0, 0.5]], "color": "#08007f", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.04999999999999982, 0.0, 0.5], [0.06666666666666643, 0.0, 0.5]], "color": "#0c007f", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.06666666666666643, 0.0, 0.5], [0.08333333333333304, 0.0, 0.5]], "color": "#10007f", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.08333333333333304, 0.0, 0.5], [0.09999999999999964, 0.0, 0.5]], "color": "#15007f", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.09999999999999964, 0.0, 0.5], [0.11666666666666625, 0.0, 0.5]], "color": "#19007f", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.11666666666666625, 0.0, 0.5], [0.13333333333333375, 0.0, 0.5]], "color": "#1d007f", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.13333333333333375, 0.0, 0.5], [0.15000000000000036, 0.0, 0.5]], "color": "#22007f", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.15000000000000036, 0.0, 0.5], [0.16666666666666696, 0.0, 0.5]], "color": "#26007f", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.16666666666666696, 0.0, 0.5], [0.18333333333333357, 0.0, 0.5]], "color": "#2a007f", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.18333333333333357, 0.0, 0.5], [0.20000000000000018, 0.0, 0.5]], "color": "#2e007f", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.20000000000000018, 0.0, 0.5], [0.21666666666666679, 0.0, 0.5]], "color": "#33007f", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.21666666666666679, 0.0, 0.5], [0.2333333333333334, 0.0, 0.5]], "color": "#37007f", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.2333333333333334, 0.0, 0.5], [0.25, 0.0, 0.5]], "color": "#3b007f", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.25, 0.0, 0.5], [0.2666666666666666, 0.0, 0.5]], "color": "#3f007f", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.2666666666666666, 0.0, 0.5], [0.2833333333333332, 0.0, 0.5]], "color": "#43007f", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.2833333333333332, 0.0, 0.5], [0.2999999999999998, 0.0, 0.5]], "color": "#48007f", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.2999999999999998, 0.0, 0.5], [0.31666666666666643, 0.0, 0.5]], "color": "#4c007f", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.31666666666666643, 0.0, 0.5], [0.33333333333333304, 0.0, 0.5]], "color": "#50007f", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.33333333333333304, 0.0, 0.5], [0.34999999999999964, 0.0, 0.5]], "color": "#54007f", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.34999999999999964, 0.0, 0.5], [0.36666666666666625, 0.0, 0.5]], "color": "#59007f", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.36666666666666625, 0.0, 0.5], [0.38333333333333375, 0.0, 0.5]], "color": "#5d007f", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.38333333333333375, 0.0, 0.5], [0.40000000000000036, 0.0, 0.5]], "color": "#61007f", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.40000000000000036, 0.0, 0.5], [0.41666666666666696, 0.0, 0.5]], "color": "#66007f", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.41666666666666696, 0.0, 0.5], [0.43333333333333357, 0.0, 0.5]], "color": "#6a007f", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.43333333333333357, 0.0, 0.5], [0.4500000000000002, 0.0, 0.5]], "color": "#6e007f", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.4500000000000002, 0.0, 0.5], [0.4666666666666668, 0.0, 0.5]], "color": "#72007f", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.4666666666666668, 0.0, 0.5], [0.4833333333333334, 0.0, 0.5]], "color": "#77007f", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.4833333333333334, 0.0, 0.5], [0.5, 0.0, 0.5]], "color": "#7b007f", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.5, 0.0, 0.5], [0.5, 0.0, 0.4833333333333334]], "color": "#7f007f", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.5, 0.0, 0.4833333333333334], [0.5, 0.0, 0.4666666666666668]], "color": "#7f007b", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.5, 0.0, 0.4666666666666668], [0.5, 0.0, 0.4500000000000002]], "color": "#7f0077", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.5, 0.0, 0.4500000000000002], [0.5, 0.0, 0.4333333333333331]], "color": "#7f0072", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.5, 0.0, 0.4333333333333331], [0.5, 0.0, 0.4166666666666665]], "color": "#7f006e", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.5, 0.0, 0.4166666666666665], [0.5, 0.0, 0.3999999999999999]], "color": "#7f006a", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.5, 0.0, 0.3999999999999999], [0.5, 0.0, 0.3833333333333333]], "color": "#7f0065", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.5, 0.0, 0.3833333333333333], [0.5, 0.0, 0.3666666666666667]], "color": "#7f0061", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.5, 0.0, 0.3666666666666667], [0.5, 0.0, 0.3500000000000001]], "color": "#7f005d", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.5, 0.0, 0.3500000000000001], [0.5, 0.0, 0.3333333333333335]], "color": "#7f0059", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.5, 0.0, 0.3333333333333335], [0.5, 0.0, 0.3166666666666669]], "color": "#7f0055", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.5, 0.0, 0.3166666666666669], [0.5, 0.0, 0.2999999999999998]], "color": "#7f0050", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.5, 0.0, 0.2999999999999998], [0.5, 0.0, 0.2833333333333332]], "color": "#7f004c", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.5, 0.0, 0.2833333333333332], [0.5, 0.0, 0.2666666666666666]], "color": "#7f0048", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.5, 0.0, 0.2666666666666666], [0.5, 0.0, 0.25]], "color": "#7f0043", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.5, 0.0, 0.25], [0.5, 0.0, 0.2333333333333334]], "color": "#7f003f", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.5, 0.0, 0.2333333333333334], [0.5, 0.0, 0.21666666666666679]], "color": "#7f003b", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.5, 0.0, 0.21666666666666679], [0.5, 0.0, 0.20000000000000018]], "color": "#7f0037", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.5, 0.0, 0.20000000000000018], [0.5, 0.0, 0.18333333333333313]], "color": "#7f0033", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.5, 0.0, 0.18333333333333313], [0.5, 0.0, 0.16666666666666652]], "color": "#7f002e", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.5, 0.0, 0.16666666666666652], [0.5, 0.0, 0.1499999999999999]], "color": "#7f002a", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.5, 0.0, 0.1499999999999999], [0.5, 0.0, 0.1333333333333333]], "color": "#7f0026", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.5, 0.0, 0.1333333333333333], [0.5, 0.0, 0.1166666666666667]], "color": "#7f0021", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.5, 0.0, 0.1166666666666667], [0.5, 0.0, 0.10000000000000009]], "color": "#7f001d", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.5, 0.0, 0.10000000000000009], [0.5, 0.0, 0.08333333333333348]], "color": "#7f0019", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.5, 0.0, 0.08333333333333348], [0.5, 0.0, 0.06666666666666687]], "color": "#7f0015", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.5, 0.0, 0.06666666666666687], [0.5, 0.0, 0.04999999999999982]], "color": "#7f0011", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.5, 0.0, 0.04999999999999982], [0.5, 0.0, 0.033333333333333215]], "color": "#7f000c", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.5, 0.0, 0.033333333333333215], [0.5, 0.0, 0.016666666666666607]], "color": "#7f0008", "opacity": 1.0, "linewidth": 8.0}, {"points": [[0.5, 0.0, 0.016666666666666607], [0.5, 0.0, 0.0]], "color": "#7f0004", "opacity": 1.0, "linewidth": 8.0}];
+    for ( var i=0 ; i < lines.length ; i++ ) addLine( lines[i] );
+
+    function addLine( json ) {
+
+        var geometry = new THREE.Geometry();
+        for ( var i=0 ; i < json.points.length ; i++ ) {
+            var v = json.points[i];
+            geometry.vertices.push( new THREE.Vector3( a[0]*v[0], a[1]*v[1], a[2]*v[2] ) );
+        }
+
+        var c = new THREE.Vector3();
+        geometry.computeBoundingBox();
+        geometry.boundingBox.getCenter( c );
+        geometry.translate( -c.x, -c.y, -c.z );
+
+        var transparent = json.opacity < 1 ? true : false;
+        var materialOptions = { color: json.color, linewidth: json.linewidth,
+                                transparent: transparent, opacity: json.opacity };
+
+        var mesh;
+        if ( json.linewidth > 1 && window.createFatLineStrip ) {
+            mesh = createFatLineStrip( geometry, materialOptions );
+        } else {
+            var material = new THREE.LineBasicMaterial( materialOptions );
+            mesh = new THREE.Line( geometry, material );
+        }
+
+        mesh.position.set( c.x, c.y, c.z );
+        mesh.userData = json;
+        scene.add( mesh );
+
+    }
+
+    var surfaces = [];
+    for ( var i=0 ; i < surfaces.length ; i++ ) addSurface( surfaces[i] );
+
+    function addSurface( json ) {
+
+        var useFaceColors = 'faceColors' in json ? true : false;
+
+        var geometry = new THREE.Geometry();
+        for ( var i=0 ; i < json.vertices.length ; i++ ) {
+            var v = json.vertices[i];
+            geometry.vertices.push( new THREE.Vector3( a[0]*v.x, a[1]*v.y, a[2]*v.z ) );
+        }
+        for ( var i=0 ; i < json.faces.length ; i++ ) {
+            var f = json.faces[i];
+            for ( var j=0 ; j < f.length - 2 ; j++ ) {
+                var face = new THREE.Face3( f[0], f[j+1], f[j+2] );
+                if ( useFaceColors ) face.color.set( json.faceColors[i] );
+                geometry.faces.push( face );
+            }
+        }
+        geometry.computeVertexNormals();
+
+        var side = json.singleSide ? THREE.FrontSide : THREE.DoubleSide;
+        var transparent = json.opacity < 1 ? true : false;
+        var depthWrite = 'depthWrite' in json ? json.depthWrite : !transparent;
+        var flatShading = json.useFlatShading ? json.useFlatShading : false;
+
+        var material = new THREE.MeshPhongMaterial( { side: side,
+                                     color: useFaceColors ? 'white' : json.color,
+                                     vertexColors: useFaceColors ? THREE.FaceColors : THREE.NoColors,
+                                     transparent: transparent, opacity: json.opacity,
+                                     shininess: 20, flatShading: flatShading,
+                                     depthWrite: depthWrite } );
+
+        var c = new THREE.Vector3();
+        geometry.computeBoundingBox();
+        geometry.boundingBox.getCenter( c );
+        geometry.translate( -c.x, -c.y, -c.z );
+
+        var mesh = new THREE.Mesh( geometry, material );
+        mesh.position.set( c.x, c.y, c.z );
+        if ( transparent && json.renderOrder ) mesh.renderOrder = json.renderOrder;
+        mesh.userData = json;
+        scene.add( mesh );
+
+        if ( json.showMeshGrid ) addSurfaceMeshGrid( json );
+
+    }
+
+    function addSurfaceMeshGrid( json ) {
+
+        var geometry = new THREE.Geometry();
+
+        for ( var i=0 ; i < json.faces.length ; i++ ) {
+            var f = json.faces[i];
+            for ( var j=0 ; j < f.length ; j++ ) {
+                var k = j === f.length-1 ? 0 : j+1;
+                var v1 = json.vertices[f[j]];
+                var v2 = json.vertices[f[k]];
+                // vertices in opposite directions on neighboring faces
+                var nudge = f[j] < f[k] ? .0005*zRange : -.0005*zRange;
+                geometry.vertices.push( new THREE.Vector3( a[0]*v1.x, a[1]*v1.y, a[2]*(v1.z+nudge) ) );
+                geometry.vertices.push( new THREE.Vector3( a[0]*v2.x, a[1]*v2.y, a[2]*(v2.z+nudge) ) );
+            }
+        }
+
+        var c = new THREE.Vector3();
+        geometry.computeBoundingBox();
+        geometry.boundingBox.getCenter( c );
+        geometry.translate( -c.x, -c.y, -c.z );
+
+        var gridColor = options.theme === 'dark' ? 'white' : 'black';
+        var linewidth = json.linewidth || 1;
+        var materialOptions = { color: gridColor, linewidth: linewidth };
+
+        var mesh;
+        if ( linewidth > 1 && window.createFatLineSegments ) {
+            mesh = createFatLineSegments( geometry, materialOptions );
+        } else {
+            var material = new THREE.LineBasicMaterial( materialOptions );
+            mesh = new THREE.LineSegments( geometry, material );
+        }
+
+        mesh.position.set( c.x, c.y, c.z );
+        mesh.userData = json;
+        scene.add( mesh );
+
+    }
+
+    function render() {
+
+        if ( window.updateAnimation ) animate = updateAnimation();
+        if ( animate ) requestAnimationFrame( render );
+
+        renderer.render( scene, camera );
+
+    }
+
+    render();
+    controls.update();
+    if ( !animate ) render();
+
+
+    // menu functions
+
+    function toggleMenu() {
+
+        var m = document.getElementById( 'menu-content' );
+        if ( m.style.display === 'block' ) m.style.display = 'none'
+        else m.style.display = 'block';
+
+    }
+
+
+    function saveAsPNG() {
+
+        var a = document.body.appendChild( document.createElement( 'a' ) );
+        a.href = renderer.domElement.toDataURL( 'image/png' );
+        a.download = 'screenshot';
+        a.click();
+
+    }
+
+    function saveAsHTML() {
+
+        toggleMenu(); // otherwise visible in output
+        event.stopPropagation();
+
+        var blob = new Blob( [ '<!DOCTYPE html>\n' + document.documentElement.outerHTML ] );
+        var a = document.body.appendChild( document.createElement( 'a' ) );
+        a.href = window.URL.createObjectURL( blob );
+        a.download = suggestFilename();
+        a.click();
+
+        function suggestFilename() {
+            if ( !document.title ) {
+                return 'graphic.html';
+            } else if ( /\.html?$/i.test( document.title ) ) {
+                return document.title; // already ends in .htm or .html
+            } else {
+                return document.title + '.html';
+            }
+        }
+
+    }
+
+    function getViewpoint() {
+
+        function roundTo( x, n ) { return +x.toFixed(n); }
+
+        var v = camera.quaternion.inverse();
+        var r = Math.sqrt( v.x*v.x + v.y*v.y + v.z*v.z );
+        var axis = [ roundTo( v.x / r, 4 ), roundTo( v.y / r, 4 ), roundTo( v.z / r, 4 ) ];
+        var angle = roundTo( 2 * Math.atan2( r, v.w ) * 180 / Math.PI, 2 );
+
+        var textArea = document.createElement( 'textarea' );
+        textArea.textContent = JSON.stringify( axis ) + ',' + angle;
+        textArea.style.csstext = 'position: absolute; top: -100%';
+        document.body.append( textArea );
+        textArea.select();
+        document.execCommand( 'copy' );
+
+        var m = document.getElementById( 'menu-message' );
+        m.innerHTML = 'Viewpoint copied to clipboard';
+        m.style.display = 'block';
+        setTimeout( function() { m.style.display = 'none'; }, 2000 );
+
+    }
+
+    function getCamera() {
+
+        function roundTo( x, n ) { return +x.toFixed(n); }
+
+        var pos = camera.position;
+        var pos_r = [ roundTo( pos.x, 4 ), roundTo( pos.y, 4 ), roundTo( pos.z, 4 ) ];
+   //     var up = camera.up; // up is always (0,0,1)
+        var textArea = document.createElement('textarea');
+        var cam_position = JSON.stringify(pos_r);
+        textArea.textContent = ',camera_position=' + cam_position;
+        textArea.style.csstext = 'position: absolute; top: -100%';
+        document.body.append( textArea );
+        textArea.select();
+        document.execCommand( 'copy' );
+
+        var m = document.getElementById( 'menu-message' );
+        m.innerHTML = 'Camera position '+ cam_position+' copied to clipboard';
+        m.style.display = 'block';
+        setTimeout( function() { m.style.display = 'none'; }, 2000 );
+
+    }
+
+</script><canvas style="display: block; width: 1088px; height: 400px;" width="1088" height="400"></canvas>
+
+<div id="menu-container" onclick="toggleMenu()">ⓘ
+<div id="menu-message"></div>
+<div id="menu-content" style="display: none;">
+<div onclick="saveAsPNG()">Save as PNG</div>
+<div onclick="saveAsHTML()">Save as HTML</div>
+<div onclick="getCamera()">Get camera</div>
+<div onclick="getViewpoint()">Get viewpoint</div>
+<div>Close Menu</div>
+</div></div>
+
+
+
+
+</body></html>
